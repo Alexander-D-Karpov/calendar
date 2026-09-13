@@ -1,25 +1,26 @@
-# Append to scrape_configs in prometheus.yml.
-#
-# Two processes export separately: the web process serves requests, the worker
-# drains the queue. Job metrics only exist on the worker, HTTP metrics only on
-# the app, so scraping one of them hides half the picture.
-#
-# METRICS_TOKEN guards /metrics with a bearer token. Put it in a file Prometheus
-# can read rather than inline, so the token is not in a config you might commit:
-#
-#   printf '%s' "$METRICS_TOKEN" > /etc/prometheus/calendar.token
-#   chmod 600 /etc/prometheus/calendar.token
-#
-# Drop the authorization block entirely if METRICS_TOKEN is unset.
-
-- job_name: 'calendar'
-  authorization:
-    type: Bearer
-    credentials_file: /etc/prometheus/calendar.token
-  static_configs:
-    - targets: ['calendar-app-1:9091']
-      labels:
-        component: 'app'
-    - targets: ['calendar-worker-1:9092']
-      labels:
-        component: 'worker'
+  # --- calendar: appended fragment, keep this marker line ---
+  #
+  # Append to the END of scrape_configs in prometheus.yml. The two space indent
+  # is load bearing: these are list items under scrape_configs, and appending
+  # them at column zero makes the file invalid, which Prometheus reports only in
+  # its log while it carries on serving the previous config.
+  #
+  # Check before reloading, it exits non-zero on a bad file:
+  #   docker exec prometheus promtool check config /etc/prometheus/prometheus.yml
+  #
+  # Two processes export separately: HTTP metrics only exist on the app, job and
+  # queue metrics only on the worker. Scraping one hides half the system.
+  #
+  # METRICS_TOKEN guards /metrics. Keep it in a file rather than inline, written
+  # without a trailing newline or the bearer credential will not match.
+  - job_name: 'calendar'
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/calendar.token
+    static_configs:
+      - targets: ['calendar-app-1:9091']
+        labels:
+          component: 'app'
+      - targets: ['calendar-worker-1:9092']
+        labels:
+          component: 'worker'
