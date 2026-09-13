@@ -6,6 +6,14 @@ with page loads.
 
 ## First deploy
 
+Pick host ports before anything else. The defaults, 8080 and 9091, are taken on
+any host already running services, and the container will simply fail to bind:
+
+```sh
+ss -ltn                                     # then set APP_HOST_PORT and
+                                            # METRICS_HOST_PORT in .env
+```
+
 ```sh
 cp deploy/env.production.example .env      # then fill every <...>
 ./calendar keys generate                    # SECRET_KEYS
@@ -17,6 +25,19 @@ docker compose up -d --build
 docker compose exec app /calendar migrate up
 docker compose exec app /calendar user create --email you@akarpov.ru --password-stdin
 ```
+
+Then the front door. Certbot needs the plain HTTP server block to exist before
+it can answer the challenge, so install the config first and let certbot rewrite
+it:
+
+```sh
+sudo cp deploy/nginx/calendar.conf /etc/nginx/sites-enabled/calendar.akarpov.ru.conf
+sudo certbot --nginx -d calendar.akarpov.ru
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+`proxy_pass` in that file must point at `APP_HOST_PORT`, not at 8080, which is
+the port inside the container.
 
 `DATABASE_AUTO_MIGRATE` defaults to true, so the first boot migrates on its own;
 running `migrate up` first makes the step explicit and fails loudly instead of

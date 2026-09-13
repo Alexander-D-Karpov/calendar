@@ -29,9 +29,12 @@ services:
       HTTP_TRUSTED_PROXIES: 127.0.0.1/32,::1/128,172.16.0.0/12
       METRICS_ADDR: ":9091"
       WORKER_ENABLED: "false"
+    # Loopback only: nginx is the only thing that should reach either port. On a
+    # host that already runs other services, set these in .env to something free
+    # rather than editing this file.
     ports:
-      - "127.0.0.1:8080:8080"
-      - "127.0.0.1:9091:9091"
+      - "127.0.0.1:${APP_HOST_PORT:-8080}:8080"
+      - "127.0.0.1:${METRICS_HOST_PORT:-9091}:9091"
     volumes:
       - appdata:/data
     healthcheck:
