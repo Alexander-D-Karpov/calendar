@@ -204,7 +204,106 @@ func TestCalendarPagesRender(t *testing.T) {
 	if err := r.Execute(&buf, "event_edit", page); err != nil {
 		t.Fatal(err)
 	}
-	if out := buf.String(); !strings.Contains(out, `action="/events"`) || !strings.Contains(out, `value="Standup"`) {
+	out := buf.String()
+	if !strings.Contains(out, `action="/events"`) || !strings.Contains(out, `value="Standup"`) {
 		t.Fatal("event form mismatch")
+	}
+	// A blank timezone has to fall back to the account zone. Posting an empty
+	// one fails validation with "is required for timed events".
+	if !strings.Contains(out, `<select id="ev-tz" name="timezone"`) {
+		t.Error("timezone must be a select")
+	}
+	if !strings.Contains(out, `<option value="UTC" selected>`) {
+		t.Error("timezone must default to the account zone")
+	}
+}
+
+// Every form carrying a timezone resolves a blank one to the account zone.
+func TestTimezoneSelectsDefaultToTheAccountZone(t *testing.T) {
+	r := testRenderer(t)
+	cases := []struct {
+		page, id string
+		data     any
+	}{
+		{"todo_edit", "td-tz", map[string]any{
+			"Action": "/todos", "Cancel": "/todos/",
+			"Lists":      []domain.TodoList{{ID: domain.NewID(), Name: "Inbox"}},
+			"Repeats":    []map[string]string{{"Value": "none", "Label": "Does not repeat"}},
+			"Priorities": []map[string]string{{"Value": "0", "Label": "None"}},
+			"Shows":      []map[string]string{{"Value": "", "Label": "Default"}},
+		}},
+	}
+	for _, c := range cases {
+		page := samplePage(true)
+		page.User.Timezone = "Europe/Moscow"
+		page.Data = c.data
+		var buf bytes.Buffer
+		if err := r.Execute(&buf, c.page, page); err != nil {
+			t.Errorf("%s: %v", c.page, err)
+			continue
+		}
+		out := buf.String()
+		if !strings.Contains(out, `<select id="`+c.id+`" name="timezone"`) {
+			t.Errorf("%s: timezone is not a select", c.page)
+		}
+		if !strings.Contains(out, `<option value="Europe/Moscow" selected>`) {
+			t.Errorf("%s: did not default to the account zone", c.page)
+		}
+	}
+}
+
+// Google fetches both pages during OAuth review, and rejects a policy that
+// omits the Limited Use disclosure.
+func TestLegalPagesRender(t *testing.T) {
+	r := testRenderer(t)
+	data := legalView{
+		AppName: "Calendar",
+		Host:    "calendar.akarpov.ru",
+		Contact: "calendar@akarpov.ru",
+		Google:  true,
+		Sync:    true,
+	}
+	for _, name := range []string{"privacy", "terms"} {
+		page := samplePage(false)
+		page.Data = data
+		var buf bytes.Buffer
+		if err := r.Execute(&buf, name, page); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		out := buf.String()
+		if !strings.Contains(out, "calendar@akarpov.ru") {
+			t.Errorf("%s: contact address missing", name)
+		}
+		if strings.Contains(out, "Sign out") {
+			t.Errorf("%s: must render for a signed out visitor", name)
+		}
+	}
+
+	page := samplePage(false)
+	page.Data = data
+	var buf bytes.Buffer
+	if err := r.Execute(&buf, "privacy", page); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{
+		"Limited Use",
+		"developers.google.com/terms/api-services-user-data-policy",
+		"Google Calendar and Google Tasks",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("privacy policy missing %q", want)
+		}
+	}
+
+	// With Google off, the policy must not claim scopes the app never asks for.
+	page = samplePage(false)
+	page.Data = legalView{AppName: "Calendar", Host: "x"}
+	buf.Reset()
+	if err := r.Execute(&buf, "privacy", page); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), "Google Tasks") {
+		t.Error("policy describes Google sync when Google is disabled")
 	}
 }

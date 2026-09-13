@@ -24,7 +24,11 @@
         <div class="row">
             <div class="field">
                 <label for="cal-tz">Timezone</label>
-                <input id="cal-tz" name="timezone" type="text" spellcheck="false" placeholder="account timezone" value="{{.Form.Get "timezone"}}"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                {{$tz := .Form.Get "timezone"}}
+                <select id="cal-tz" name="timezone"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                    <option value=""{{if not $tz}} selected{{end}}>Account timezone</option>
+                    {{range zones $tz}}<optgroup label="{{.Region}}">{{range .Zones}}<option value="{{.Name}}"{{if eq .Name $tz}} selected{{end}}>{{.Label}}</option>{{end}}</optgroup>{{end}}
+                </select>
                 {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{end}}
             </div>
             <div class="field">

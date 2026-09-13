@@ -1,0 +1,43 @@
+{{template "base" .}}
+{{define "content"}}
+<article class="doc">
+    <h1>Terms</h1>
+    <p class="lede">These terms cover your use of {{.Data.AppName}}{{if .Data.Host}} at {{.Data.Host}}{{end}}. Using the service means accepting them.</p>
+
+    <h2>Your account</h2>
+    <p>You are responsible for what happens under your account, and for keeping your password and API tokens to yourself. Tell the operator if you believe someone else has access. Accounts are for people; do not share one.</p>
+
+    <h2>Your content</h2>
+    <p>What you put into the service stays yours. You grant the operator only what is needed to run it: to store your content, display it back to you, and send it where you direct, such as to a share link you create or a Google account you connect. Export your content at any time from the import and export settings.</p>
+
+    <h2>Acceptable use</h2>
+    <p>Do not use the service to break the law, to store or distribute material you have no right to, or to interfere with its operation. That includes attempting to reach other people's accounts, subscribing the importer to URLs in order to probe systems you do not control, and generating load designed to degrade the service. Rate limits apply and are enforced.</p>
+
+    {{if .Data.Google}}
+    <h2>Connected accounts</h2>
+    <p>Connecting a Google account is optional and reversible. While connected, the service reads and writes the calendar and task data you have authorised so that both sides stay in step. Synchronisation may be delayed or interrupted by the other provider, and the service cannot guarantee that every change arrives. Disconnect at any time in <a href="/settings/security">Security settings</a>.</p>
+    {{end}}
+
+    <h2>Share links</h2>
+    <p>A share link is public to anyone who has it. Deciding what a link exposes, and to whom you give it, is your responsibility. Links can be revoked at any time.</p>
+
+    <h2>Availability</h2>
+    <p>The service is provided as it is, with no guarantee of availability, and may be changed, interrupted for maintenance, or discontinued. Keep your own backups of anything you cannot afford to lose; the export feature exists for this.</p>
+
+    <h2>Liability</h2>
+    <p>To the extent the law allows, the operator is not liable for lost data, missed events or missed reminders, or for any indirect or consequential loss arising from use of the service. Reminders are delivered on a best-effort basis and must not be relied on where a missed notification would cause harm.</p>
+
+    <h2>Ending it</h2>
+    <p>You may delete your account at any time. The operator may suspend or remove an account that breaks these terms or puts the service at risk.</p>
+
+    <h2>Changes</h2>
+    <p>These terms change when the service does. Continuing to use it after a change means accepting the revised terms.</p>
+
+    {{with .Data.Contact}}
+    <h2>Contact</h2>
+    <p><a href="mailto:{{.}}">{{.}}</a></p>
+    {{end}}
+
+    <p class="muted">See also the <a href="/privacy">privacy policy</a>.</p>
+</article>
+{{end}}

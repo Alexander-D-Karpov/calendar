@@ -96,6 +96,7 @@ func buildRenderer(root fs.FS, dev bool) (*Renderer, *Assets, error) {
 		"ua":       describeUA,
 		"markdown": markdown.Render,
 		"colors":   colorsHref,
+		"zones":    Zones,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -107,6 +108,9 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /static/{path...}", s.assets)
 	mux.Handle("GET /sw.js", s.assets.ServeFile("js/sw.js"))
 	mux.HandleFunc("GET /colors.css", colorsCSS)
+	// Public and unauthenticated: Google fetches both during OAuth review.
+	mux.Handle("GET /privacy", s.Handle(s.privacy))
+	mux.Handle("GET /terms", s.Handle(s.terms))
 	mux.Handle("POST /theme", s.Handle(s.setTheme))
 	mux.Handle("/", s.Handle(s.notFound))
 }

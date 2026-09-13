@@ -1,0 +1,232 @@
+/* Date and time pickers. The native controls stay in the markup and are
+   upgraded by picker.js, so everything here is scoped to .pick, which only
+   exists once the script has run. */
+
+.pick {
+    position: relative;
+    display: inline-flex;
+    min-width: 0;
+}
+
+.pick > input {
+    width: 100%;
+    min-width: 0;
+}
+
+.pick-pop {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 4px);
+    left: 0;
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px light-dark(rgba(31, 35, 40, 0.16), rgba(0, 0, 0, 0.5));
+}
+
+.pick-pop[data-open] {
+    display: block;
+}
+
+/* Opening upward when there is no room below. */
+.pick-pop[data-above] {
+    top: auto;
+    bottom: calc(100% + 4px);
+}
+
+/* Times ------------------------------------------------------------------ */
+
+.pick-list {
+    max-height: 15rem;
+    width: 10.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+}
+
+.pick-opt {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+    cursor: default;
+    white-space: nowrap;
+}
+
+.pick-opt-note {
+    color: var(--muted);
+}
+
+.pick-opt[aria-selected="true"] {
+    background: var(--accent-soft);
+}
+
+.pick-opt.is-active {
+    background: var(--accent);
+    color: var(--accent-fg);
+}
+
+.pick-opt.is-active .pick-opt-note {
+    color: inherit;
+}
+
+.pick-empty {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+/* Dates ------------------------------------------------------------------ */
+
+.pick-cal {
+    width: 16rem;
+    padding: 0.5rem;
+}
+
+.pick-cal-head {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.375rem;
+}
+
+.pick-cal-title {
+    flex: 1;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--fg);
+}
+
+.pick-cal-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    color: var(--muted);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pick-cal-nav:hover {
+    background: var(--surface-2);
+    color: var(--fg);
+}
+
+.pick-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+}
+
+.pick-dow {
+    padding: 0.25rem 0;
+    text-align: center;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.pick-day {
+    padding: 0.3125rem 0;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    cursor: pointer;
+}
+
+.pick-day:hover {
+    background: var(--surface-2);
+}
+
+.pick-day[data-other] {
+    color: var(--muted);
+}
+
+.pick-day[data-today] {
+    border-color: var(--border-strong);
+    font-weight: 600;
+}
+
+.pick-day[aria-selected="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+    font-weight: 600;
+}
+
+.pick-cal-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.375rem;
+    padding-top: 0.375rem;
+    border-top: 1px solid var(--border);
+}
+
+.pick-cal-foot button {
+    padding: 0.125rem 0.375rem;
+    background: none;
+    border: none;
+    border-radius: var(--radius);
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.pick-cal-foot button:hover {
+    background: var(--surface-2);
+}
+
+.pick-day:focus-visible,
+.pick-cal-nav:focus-visible,
+.pick-cal-foot button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+}
+
+/* On a narrow screen the popover becomes a sheet, so a 16rem calendar cannot
+   push the layout sideways or open off the edge of the viewport. */
+@media (max-width: 30rem) {
+    .pick-pop[data-open] {
+        position: fixed;
+        inset: auto 0 0 0;
+        top: auto;
+        border-radius: var(--radius) var(--radius) 0 0;
+        border-bottom: none;
+        box-shadow: 0 -8px 24px light-dark(rgba(31, 35, 40, 0.2), rgba(0, 0, 0, 0.6));
+    }
+
+    .pick-list,
+    .pick-cal {
+        width: auto;
+    }
+
+    .pick-list {
+        max-height: 50vh;
+    }
+
+    .pick-opt,
+    .pick-day {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+}

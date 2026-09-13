@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Alexander-D-Karpov/calendar/internal/domain"
+	"github.com/Alexander-D-Karpov/calendar/internal/quickadd"
 	"github.com/Alexander-D-Karpov/calendar/internal/web"
 )
 
@@ -126,5 +127,34 @@ func TestFilter(t *testing.T) {
 	}
 	if f = parseFilter(url.Values{"f": {"1"}}, cals); len(f.ids) != 0 {
 		t.Fatal("empty explicit filter must select nothing")
+	}
+}
+
+// A timed quick add has to carry the timezone under the name the form and
+// eventPatch read, or every timed event it produces is rejected with
+// "timezone is required for timed events".
+func TestQuickEventValuesCarryTimezoneForTimedEvents(t *testing.T) {
+	loc, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := web.Viewer{Loc: loc, Now: time.Date(2026, 9, 14, 9, 0, 0, 0, loc)}
+	at := domain.TimeOfDay{Hour: 10}
+	got := quickEventValues(quickadd.Result{Title: "Standup", Time: &at}, v)
+
+	if got.Get("timezone") != "Europe/Moscow" {
+		t.Errorf("timezone = %q, want Europe/Moscow", got.Get("timezone"))
+	}
+	if got.Has("tz") {
+		t.Error(`values carry "tz", which no form field or patch reads`)
+	}
+
+	f := web.NewForm(got)
+	p, err := eventPatch(f, true, 0)
+	if err != nil {
+		t.Fatalf("eventPatch rejected a timed quick add: %v", err)
+	}
+	if !p.Timezone.Set || p.Timezone.V != "Europe/Moscow" {
+		t.Errorf("patch timezone = %+v, want Europe/Moscow", p.Timezone)
 	}
 }

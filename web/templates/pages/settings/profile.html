@@ -19,8 +19,12 @@
     <div class="row">
         <div class="field">
             <label for="pf-tz">Timezone</label>
-            <input id="pf-tz" name="timezone" type="text" spellcheck="false" autocomplete="off" required value="{{.Form.Get "timezone"}}"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
-            {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">An IANA name like Europe/Vilnius.</p>{{end}}
+            {{$tz := .Form.Get "timezone"}}
+            {{if and (not $tz) .User}}{{$tz = .User.Timezone}}{{end}}
+            <select id="pf-tz" name="timezone" required{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                {{range zones $tz}}<optgroup label="{{.Region}}">{{range .Zones}}<option value="{{.Name}}"{{if eq .Name $tz}} selected{{end}}>{{.Label}}</option>{{end}}</optgroup>{{end}}
+            </select>
+            {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">New events use this zone unless you set another on the event.</p>{{end}}
         </div>
         <div class="field">
             <label for="pf-week">Week starts on</label>

@@ -249,3 +249,51 @@ code.scope {
     padding: 0 0.5rem;
     font-size: 0.8125rem;
 }
+
+/* Standalone documents: privacy, terms. Narrow measure so long prose stays
+   readable on a wide screen, and the same tokens as the rest of the app. */
+.doc {
+    max-width: 44rem;
+    margin: 1.5rem auto 3rem;
+    padding: 0 1rem;
+    color: var(--fg);
+    line-height: 1.65;
+}
+
+.doc h1 {
+    margin: 0 0 0.5rem;
+    font-size: 1.75rem;
+}
+
+.doc h2 {
+    margin: 2rem 0 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 1.0625rem;
+}
+
+.doc p {
+    margin: 0 0 0.75rem;
+}
+
+.doc .lede {
+    margin-bottom: 1.5rem;
+    color: var(--muted);
+    font-size: 1.0625rem;
+}
+
+.doc .muted {
+    margin-top: 2rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+    .doc {
+        margin-top: 1rem;
+    }
+
+    .doc h1 {
+        font-size: 1.5rem;
+    }
+}

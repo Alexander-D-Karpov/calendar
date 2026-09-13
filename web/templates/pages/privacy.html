@@ -1,0 +1,43 @@
+{{template "base" .}}
+{{define "content"}}
+<article class="doc">
+    <h1>Privacy</h1>
+    <p class="lede">{{.Data.AppName}} is a personal calendar and todo service. It stores what you put into it and what is needed to sign you in. It does not run advertising, does not profile you, and does not sell or share your data with third parties.</p>
+
+    <h2>What is stored</h2>
+    <p>Your account: email address, a hashed password if you set one, display name, timezone and your display settings. Passwords are stored as Argon2id hashes and cannot be read back.</p>
+    <p>Your content: calendars, events, todos, checklists, reminders, attachments of text such as descriptions and locations, import history, and any calendar feeds you subscribe to.</p>
+    <p>Operational records: sign-in sessions with their IP address and browser user agent, API tokens you create, share links you generate, web push subscriptions if you enable notifications, and a security audit log of account changes such as sign-ins and password changes.</p>
+
+    {{if .Data.Google}}
+    <h2>Google account data</h2>
+    <p>Signing in with Google reads your Google account's email address, basic profile and unique identifier, and only to identify your account here.</p>
+    {{if .Data.Sync}}
+    <p>If you turn on synchronisation, the service additionally requests access to your Google Calendar and Google Tasks. It reads events and tasks in order to copy them into this service, and writes the changes you make here back to Google. It touches no other Google product and requests no other scope.</p>
+    <p>Google refresh tokens are encrypted before they are written to the database. Revoking access in your Google account, or disconnecting Google in <a href="/settings/security">Security settings</a>, stops all further access and deletes the stored tokens. Items already copied into this service remain until you delete them.</p>
+    {{end}}
+    <h2>Limited use</h2>
+    <p>{{.Data.AppName}}'s use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. Data obtained from Google is used only to provide the calendar and task features you have asked for. It is not sold, not used for advertising, and not disclosed to others except as required by law.</p>
+    {{end}}
+
+    <h2>Share links</h2>
+    <p>A share link publishes the calendar period you chose to anyone holding the link, without requiring them to sign in. Events you have marked private are never included, and a link set to show only availability shows nothing but busy blocks. Revoke a link at any time from your share settings; the link stops working immediately.</p>
+
+    <h2>Who else sees it</h2>
+    <p>The service runs on its own server and its own database. No analytics, tracking pixels or advertising networks are embedded in the pages.</p>
+    <p>Some data necessarily leaves the server when you ask for it: Google, if you connect your account; the operator of any calendar feed URL you subscribe to, which will see the request; your browser's push service, if you enable notifications; and your mail provider, for verification and password reset messages.{{if .Data.Sentry}} Error reports, which may include the URL and account identifier involved in a failure, are sent to an error monitoring service to diagnose faults.{{end}}</p>
+
+    <h2>How long it is kept</h2>
+    <p>Your content is kept until you delete it. Deleted items go to trash and are removed permanently after the retention period. Change history, audit records and expired sessions are pruned automatically. Deleting your account removes your calendars, events, todos, share links, sessions, tokens and Google connection.</p>
+
+    <h2>Your control</h2>
+    <p>You can export everything you have stored, in iCalendar, CSV or YAML, from the import and export settings. You can revoke individual sessions and API tokens, disconnect Google, revoke share links, and delete your account.</p>
+
+    {{with .Data.Contact}}
+    <h2>Contact</h2>
+    <p>Questions about this policy, or a request to delete your data: <a href="mailto:{{.}}">{{.}}</a>.</p>
+    {{end}}
+
+    <p class="muted">This policy describes how the service at {{if .Data.Host}}{{.Data.Host}}{{else}}this address{{end}} operates. It changes when the service changes.</p>
+</article>
+{{end}}

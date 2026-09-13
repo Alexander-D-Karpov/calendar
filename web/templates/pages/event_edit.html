@@ -52,7 +52,11 @@
                 <div class="field"><label for="ev-ed">Ends on</label><input id="ev-ed" name="end_date" type="date" value="{{.Form.Get "end_date"}}"></div>
                 <div class="field" data-timed>
                     <label for="ev-tz">Timezone</label>
-                    <input id="ev-tz" name="timezone" type="text" spellcheck="false" autocomplete="off" value="{{.Form.Get "timezone"}}"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                    {{$tz := .Form.Get "timezone"}}
+                    {{if and (not $tz) .User}}{{$tz = .User.Timezone}}{{end}}
+                    <select id="ev-tz" name="timezone"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                        {{range zones $tz}}<optgroup label="{{.Region}}">{{range .Zones}}<option value="{{.Name}}"{{if eq .Name $tz}} selected{{end}}>{{.Label}}</option>{{end}}</optgroup>{{end}}
+                    </select>
                     {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{end}}
                 </div>
             </div>

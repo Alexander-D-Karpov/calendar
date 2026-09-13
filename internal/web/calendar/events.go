@@ -629,7 +629,7 @@ func quickEventValues(p quickadd.Result, v web.Viewer) url.Values {
 	out.Set("title", p.Title)
 	out.Set("start_date", day.Format(domain.DateLayout))
 	out.Set("end_date", day.Format(domain.DateLayout))
-	out.Set("tz", v.Loc.String())
+	out.Set("timezone", v.Loc.String())
 	if p.Time == nil {
 		out.Set("all_day", "1")
 		return out
