@@ -1,0 +1,271 @@
+{
+  "title": "Calendar",
+  "uid": "calendar-app",
+  "tags": ["calendar"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Traffic",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests by status",
+      "description": "A rising 5xx line is the first thing to look at.",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "fillOpacity": 10, "lineWidth": 1 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (code) (rate(calendar_http_requests_total[5m]))",
+          "legendFormat": "{{code}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request latency",
+      "description": "p50 and p95 across all routes.",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 0, "lineWidth": 2 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(calendar_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(calendar_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "In flight",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(calendar_http_requests_in_flight)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Websockets",
+      "description": "Open live-update connections.",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(calendar_websocket_connections)" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "5xx rate",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.05 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(calendar_http_requests_total{code=~\"5..\"}[5m]))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Version",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 9 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^version$/" },
+        "textMode": "value"
+      },
+      "targets": [
+        { "refId": "A", "expr": "calendar_build_info", "format": "table", "instant": true }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Worker",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue depth by status",
+      "description": "A queued line that climbs and never falls means the worker is not keeping up, or is down.",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 10, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (calendar_jobs)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Job outcomes",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "fillOpacity": 10, "lineWidth": 1 } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(calendar_jobs_total[5m]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Slowest job kinds, p95",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(5, histogram_quantile(0.95, sum by (le, kind) (rate(calendar_job_duration_seconds_bucket[10m]))))",
+          "legendFormat": "{{kind}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Deliveries",
+      "description": "Reminders, push and mail leaving the system.",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(calendar_reminders_delivered_total[10m]))",
+          "legendFormat": "reminders"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (result) (rate(calendar_push_sent_total[10m]))",
+          "legendFormat": "push {{result}}"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (result) (rate(calendar_mail_sent_total[10m]))",
+          "legendFormat": "mail {{result}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Sync and storage",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Google sync",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 31 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(calendar_google_sync_runs_total[10m]))",
+          "legendFormat": "runs {{result}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (direction) (rate(calendar_google_sync_items_total[10m]))",
+          "legendFormat": "items {{direction}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Subscriptions and imports",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 31 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (rate(calendar_subscription_refreshes_total[10m]))",
+          "legendFormat": "refresh {{result}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (result) (rate(calendar_imports_total[10m]))",
+          "legendFormat": "import {{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Share image cache",
+      "description": "Bytes on disk against OG_CACHE_MAX, and how often images are served.",
+      "datasource": { "type": "prometheus", "uid": "${ds}" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 31 },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(calendar_og_cache_bytes)", "legendFormat": "cache bytes" },
+        {
+          "refId": "B",
+          "expr": "sum by (result) (rate(calendar_og_requests_total[10m]))",
+          "legendFormat": "requests {{result}}"
+        }
+      ]
+    }
+  ]
+}

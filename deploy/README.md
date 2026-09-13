@@ -67,6 +67,39 @@ docker compose exec app /calendar migrate up
 Migrations run up, down and up again in CI, so a rollback is exercised before it
 is ever needed in production. Take a dump first anyway.
 
+## Monitoring
+
+Two processes export metrics separately, and each holds half the picture: HTTP
+metrics only exist on `app`, job and queue metrics only on `worker`. Scrape
+both.
+
+Prometheus resolves targets by container name, which only works if it shares a
+network with them. Find the one it is on and put it in `.env`:
+
+```sh
+docker inspect prometheus --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}'
+echo 'METRICS_NETWORK=<that network>' >> .env
+docker compose -f docker-compose.yml -f deploy/docker-compose.monitoring.yml up -d
+```
+
+`/metrics` is behind a bearer token, so give Prometheus the token in a file
+rather than inline in a config:
+
+```sh
+printf '%s' "$METRICS_TOKEN" | sudo tee /etc/prometheus/calendar.token >/dev/null
+sudo chmod 600 /etc/prometheus/calendar.token
+```
+
+Append `deploy/prometheus/calendar.yml` to `scrape_configs`, reload Prometheus,
+and confirm both targets are up on its Targets page. Import
+`deploy/grafana/calendar-dashboard.json` into Grafana and pick the Prometheus
+data source when it asks.
+
+Pushgateway is the wrong tool here. It is for batch jobs that exit before
+anything can scrape them; both of these are long-lived and hold their own
+counters, and pushing through a gateway would flatten the `app` and `worker`
+labels into one series.
+
 ## Secrets
 
 Generate each one before the first boot and put it in `.env`:

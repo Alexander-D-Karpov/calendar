@@ -1,0 +1,27 @@
+# Joins app and worker to an existing Prometheus network so it can scrape them
+# by container name. Kept out of docker-compose.yml because that network is not
+# this stack's to create, and compose fails hard when an external network is
+# missing.
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.monitoring.yml up -d
+#
+# Set METRICS_NETWORK in .env to the network Prometheus is on. Find it with:
+#   docker inspect prometheus --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}'
+#
+# `default` has to stay listed: naming networks replaces the list rather than
+# adding to it, and dropping it cuts both services off from the database.
+services:
+  app:
+    networks:
+      - default
+      - metrics
+
+  worker:
+    networks:
+      - default
+      - metrics
+
+networks:
+  metrics:
+    external: true
+    name: ${METRICS_NETWORK:-monitoring_default}

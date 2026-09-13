@@ -1,0 +1,25 @@
+# Append to scrape_configs in prometheus.yml.
+#
+# Two processes export separately: the web process serves requests, the worker
+# drains the queue. Job metrics only exist on the worker, HTTP metrics only on
+# the app, so scraping one of them hides half the picture.
+#
+# METRICS_TOKEN guards /metrics with a bearer token. Put it in a file Prometheus
+# can read rather than inline, so the token is not in a config you might commit:
+#
+#   printf '%s' "$METRICS_TOKEN" > /etc/prometheus/calendar.token
+#   chmod 600 /etc/prometheus/calendar.token
+#
+# Drop the authorization block entirely if METRICS_TOKEN is unset.
+
+- job_name: 'calendar'
+  authorization:
+    type: Bearer
+    credentials_file: /etc/prometheus/calendar.token
+  static_configs:
+    - targets: ['calendar-app-1:9091']
+      labels:
+        component: 'app'
+    - targets: ['calendar-worker-1:9092']
+      labels:
+        component: 'worker'
