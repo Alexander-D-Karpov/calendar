@@ -26,18 +26,24 @@ docker compose exec app /calendar migrate up
 docker compose exec app /calendar user create --email you@akarpov.ru --password-stdin
 ```
 
-Then the front door. Certbot needs the plain HTTP server block to exist before
-it can answer the challenge, so install the config first and let certbot rewrite
-it:
+Then the front door. `calendar.conf` is HTTP only; certbot rewrites it in place
+to add the TLS block and the redirect, which is why DNS has to resolve first:
 
 ```sh
 sudo cp deploy/nginx/calendar.conf /etc/nginx/sites-enabled/calendar.akarpov.ru.conf
+sudo nginx -t && sudo systemctl reload nginx
+curl -sI http://calendar.akarpov.ru/readyz          # 200 over plain HTTP
+
 sudo certbot --nginx -d calendar.akarpov.ru
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-`proxy_pass` in that file must point at `APP_HOST_PORT`, not at 8080, which is
-the port inside the container.
+Do not add the `listen 443` block by hand first. It names a certificate that
+does not exist until certbot has run, so `nginx -t` fails, the reload fails, and
+certbot has no working nginx to modify.
+
+`proxy_pass` must point at `APP_HOST_PORT`, not at 8080, which is the port
+inside the container.
 
 `DATABASE_AUTO_MIGRATE` defaults to true, so the first boot migrates on its own;
 running `migrate up` first makes the step explicit and fails loudly instead of
