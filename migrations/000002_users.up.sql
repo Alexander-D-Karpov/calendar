@@ -1,0 +1,43 @@
+CREATE TABLE users (
+                       id                       uuid PRIMARY KEY,
+                       email                    citext NOT NULL,
+                       email_verified_at        timestamptz,
+                       password_hash            text,
+                       display_name             text NOT NULL DEFAULT '',
+                       timezone                 text NOT NULL DEFAULT 'UTC',
+                       secondary_timezone       text,
+                       week_start               smallint NOT NULL DEFAULT 1,
+                       time_format              text NOT NULL DEFAULT '24h',
+                       theme                    text NOT NULL DEFAULT 'system',
+                       default_view             text NOT NULL DEFAULT 'week',
+                       slot_minutes             smallint NOT NULL DEFAULT 30,
+                       work_start               time NOT NULL DEFAULT '09:00',
+                       work_end                 time NOT NULL DEFAULT '18:00',
+                       date_only_reminder_time  time NOT NULL DEFAULT '09:00',
+                       dedup_policy             text NOT NULL DEFAULT 'flag',
+                       created_at               timestamptz NOT NULL DEFAULT now(),
+                       updated_at               timestamptz NOT NULL DEFAULT now(),
+                       disabled_at              timestamptz,
+                       CONSTRAINT users_email_key UNIQUE (email),
+                       CONSTRAINT users_email_length_check CHECK (char_length(email) BETWEEN 3 AND 254),
+                       CONSTRAINT users_display_name_length_check CHECK (char_length(display_name) <= 100),
+                       CONSTRAINT users_week_start_check CHECK (week_start BETWEEN 0 AND 6),
+                       CONSTRAINT users_time_format_check CHECK (time_format IN ('12h', '24h')),
+                       CONSTRAINT users_theme_check CHECK (theme IN ('system', 'light', 'dark')),
+                       CONSTRAINT users_default_view_check CHECK (default_view IN ('day', '3day', 'week', 'month', 'year', 'agenda')),
+                       CONSTRAINT users_slot_minutes_check CHECK (slot_minutes IN (10, 15, 20, 30, 60)),
+                       CONSTRAINT users_work_hours_check CHECK (work_start < work_end),
+                       CONSTRAINT users_dedup_policy_check CHECK (dedup_policy IN ('off', 'flag', 'auto_exact', 'auto_fingerprint'))
+);
+
+CREATE TABLE user_identities (
+                                 id         uuid PRIMARY KEY,
+                                 user_id    uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+                                 provider   text NOT NULL,
+                                 subject    text NOT NULL,
+                                 email      citext NOT NULL,
+                                 linked_at  timestamptz NOT NULL DEFAULT now(),
+                                 CONSTRAINT user_identities_provider_check CHECK (provider IN ('google')),
+                                 CONSTRAINT user_identities_provider_subject_key UNIQUE (provider, subject),
+                                 CONSTRAINT user_identities_user_provider_key UNIQUE (user_id, provider)
+);

@@ -1,0 +1,7 @@
+{{define "period_views"}}
+{{with .Notice}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+{{with .Grid}}{{template "grid" .}}{{end}}
+{{with .Month}}{{template "month_grid" .}}{{end}}
+{{with .Year}}{{template "year_grid" .}}{{end}}
+{{with .Agenda}}{{template "agenda_list" .}}{{end}}
+{{end}}

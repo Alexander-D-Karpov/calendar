@@ -1,0 +1,18 @@
+{{define "agenda_list"}}
+{{if .Days}}
+<ol class="agenda">
+    {{range .Days}}
+    <li class="agenda-day{{if .Today}} today{{end}}">
+        <a class="agenda-date"{{with .Href}} href="{{.}}"{{end}}>{{.Label}}</a>
+        <ul>
+            {{range .Items}}
+            <li><a class="agenda-item hex-{{.Color}}{{if .Done}} done{{end}}"{{with .Href}} href="{{.}}"{{end}}{{if and .Href (not .Todo)}} data-dialog{{end}}><span class="agenda-time">{{.TimeLabel}}</span>{{if .Todo}}{{template "tick" .}}{{else}}<span class="swatch"></span>{{end}}<span class="agenda-title">{{.DisplayTitle}}</span>{{with .Progress}}<span class="progress">{{.}}</span>{{end}}{{with .Location}}<span class="muted small">{{.}}</span>{{end}}</a></li>
+            {{end}}
+        </ul>
+    </li>
+    {{end}}
+</ol>
+{{else}}
+<p class="muted">Nothing scheduled in this period.</p>
+{{end}}
+{{end}}

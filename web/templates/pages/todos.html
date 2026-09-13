@@ -1,0 +1,35 @@
+{{template "base" .}}
+{{define "head-extra"}}
+<link rel="stylesheet" href="{{asset "css/todos.css"}}">
+{{with .Data.Colors}}<link rel="stylesheet" href="{{colors .}}">{{end}}
+{{end}}
+{{define "main"}}
+<main class="todos">
+    <aside class="todos-side">
+        <nav aria-label="Filters">
+            {{range .Data.Filters}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+        </nav>
+        <h2>Lists</h2>
+        <nav aria-label="Lists">
+            {{range .Data.Lists}}<a class="hex-{{.Hex}}" href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}><span class="swatch"></span>{{.Label}}</a>{{end}}
+        </nav>
+        <form method="post" action="/todos/lists" class="quick-form">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input name="name" type="text" maxlength="100" required placeholder="New list" aria-label="New list name">
+            <button type="submit" class="btn btn-small">Add</button>
+        </form>
+    </aside>
+    <section class="todos-body" data-findable>
+        <header class="section-head">
+            <h1>{{.Data.Heading}}</h1>
+            <a class="btn btn-primary" href="{{.Data.NewHref}}" data-dialog>New todo</a>
+        </header>
+        {{template "todo_quick" .}}
+        {{if .Data.Rows}}
+        <ul class="todo-list">{{range .Data.Rows}}{{template "todo_item" .}}{{end}}</ul>
+        {{else}}
+        <p class="muted">Nothing here.</p>
+        {{end}}
+    </section>
+</main>
+{{end}}

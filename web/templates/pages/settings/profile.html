@@ -1,0 +1,89 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Profile</h1>
+{{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+<form method="post" action="/settings/profile" class="form card">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="row">
+        <div class="field">
+            <label for="pf-name">Name</label>
+            <input id="pf-name" name="display_name" type="text" maxlength="100" autocomplete="name" value="{{.Form.Get "display_name"}}"{{if .Form.Err "display_name"}} aria-invalid="true"{{end}}>
+            {{with .Form.Err "display_name"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+        <div class="field">
+            <label for="pf-email">Email</label>
+            <input id="pf-email" type="email" readonly value="{{.User.Email}}">
+        </div>
+    </div>
+    <div class="row">
+        <div class="field">
+            <label for="pf-tz">Timezone</label>
+            <input id="pf-tz" name="timezone" type="text" spellcheck="false" autocomplete="off" required value="{{.Form.Get "timezone"}}"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+            {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">An IANA name like Europe/Vilnius.</p>{{end}}
+        </div>
+        <div class="field">
+            <label for="pf-week">Week starts on</label>
+            <select id="pf-week" name="week_start">
+                {{range .Data.WeekStarts}}<option value="{{.Value}}"{{if eq ($.Form.Get "week_start") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+            {{with .Form.Err "week_start"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+    </div>
+    <div class="row">
+        <div class="field">
+            <label for="pf-clock">Clock</label>
+            <select id="pf-clock" name="time_format">
+                {{range .Data.TimeFormats}}<option value="{{.Value}}"{{if eq ($.Form.Get "time_format") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+            {{with .Form.Err "time_format"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+        <div class="field">
+            <label for="pf-view">Start page</label>
+            <select id="pf-view" name="default_view">
+                {{range .Data.Views}}<option value="{{.Value}}"{{if eq ($.Form.Get "default_view") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+            {{with .Form.Err "default_view"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+    </div>
+    <div class="row">
+        <div class="field">
+            <label for="pf-dedup">Duplicates</label>
+            <select id="pf-dedup" name="dedup_policy">
+                {{range .Data.Dedup}}<option value="{{.Value}}"{{if eq ($.Form.Get "dedup_policy") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+            {{with .Form.Err "dedup_policy"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Applies after imports and syncs. Review them under <a href="/settings/duplicates">Duplicates</a>.</p>{{end}}
+        </div>
+        <div class="field">
+            <label for="pf-datereminder">Remind about all-day todos at</label>
+            <input id="pf-datereminder" name="date_only_reminder" type="time" value="{{.Form.Get "date_only_reminder"}}"{{if .Form.Err "date_only_reminder"}} aria-invalid="true"{{end}}>
+            {{with .Form.Err "date_only_reminder"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Used when a todo has a date but no time.</p>{{end}}
+        </div>
+    </div>
+    <fieldset class="field">
+        <legend>Sleep</legend>
+        <label class="check"><input type="checkbox" name="sleep" value="1"{{if eq (.Form.Get "sleep") "1"}} checked{{end}}> Show sleep hours on day and week views</label>
+        <div class="checks-row">
+            <label class="check"><input type="radio" name="sleep_mode" value="daily"{{if eq (.Form.Get "sleep_mode") "daily"}} checked{{end}}> Same every day</label>
+            <label class="check"><input type="radio" name="sleep_mode" value="custom"{{if eq (.Form.Get "sleep_mode") "custom"}} checked{{end}}> Different per day</label>
+        </div>
+        <div class="when" data-show-when="sleep_mode=daily">
+            <input name="sleep_start" type="time" step="300" aria-label="Sleep from" value="{{.Form.Get "sleep_start"}}">
+            <span class="muted">to</span>
+            <input name="sleep_end" type="time" step="300" aria-label="Sleep until" value="{{.Form.Get "sleep_end"}}">
+        </div>
+        <div class="sleep-days" data-show-when="sleep_mode=custom">
+            {{range .Data.Days}}{{$n := .Weekday}}
+            <div class="when">
+                <label class="check sleep-day"><input type="checkbox" name="sleep_on_{{$n}}" value="1"{{if eq ($.Form.Get (printf "sleep_on_%d" $n)) "1"}} checked{{end}}> {{.Label}}</label>
+                <input name="sleep_start_{{$n}}" type="time" step="300" aria-label="{{.Label}} from" value="{{$.Form.Get (printf "sleep_start_%d" $n)}}">
+                <span class="muted">to</span>
+                <input name="sleep_end_{{$n}}" type="time" step="300" aria-label="{{.Label}} until" value="{{$.Form.Get (printf "sleep_end_%d" $n)}}">
+            </div>
+            {{end}}
+        </div>
+        {{with .Form.Err "sleep"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">A window can cross midnight, like 23:30 to 07:30. Events can still be placed inside it.</p>{{end}}
+    </fieldset>
+    <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{{end}}

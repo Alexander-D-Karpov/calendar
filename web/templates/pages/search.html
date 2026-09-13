@@ -1,0 +1,51 @@
+{{template "base" .}}
+{{define "head-extra"}}
+<link rel="stylesheet" href="{{asset "css/search.css"}}">
+{{with .Data.Colors}}<link rel="stylesheet" href="{{colors .}}">{{end}}
+{{end}}
+{{define "content"}}
+<form method="get" action="/search" class="search-form" role="search">
+    <input name="q" type="search" autocomplete="off" autofocus placeholder="Search events and todos" aria-label="Search" value="{{.Data.Raw}}">
+    <select name="type" aria-label="What to search">
+        {{range .Data.Kinds}}<option value="{{.Value}}"{{if eq $.Data.Type .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <button type="submit" class="btn btn-primary">Search</button>
+</form>
+{{range .Data.Warnings}}<p class="hint">{{.}}</p>{{end}}
+{{if .Data.Empty}}
+<section class="search-help">
+    <h2>Narrowing a search</h2>
+    <dl class="meta">
+        <dt><code>"exact phrase"</code></dt><dd>words that must appear together</dd>
+        <dt><code>-word</code></dt><dd>leave out anything with that word</dd>
+        <dt><code>in:Work</code></dt><dd>only that calendar or list</dd>
+        <dt><code>type:event</code></dt><dd>events only, or <code>type:todo</code></dd>
+        <dt><code>is:open</code></dt><dd>also <code>done</code>, <code>overdue</code>, <code>recurring</code>, <code>private</code></dd>
+        <dt><code>has:checks</code></dt><dd>also <code>time</code>, <code>body</code>, <code>location</code>, <code>reminders</code></dd>
+        <dt><code>after:today</code></dt><dd>a date, <code>today</code>, or an offset like <code>+7d</code></dd>
+        <dt><code>priority:&gt;=2</code></dt><dd>todos at or above that priority</dd>
+    </dl>
+</section>
+{{else if .Data.Rows}}
+<ul class="hit-list" data-findable>
+    {{range .Data.Rows}}
+    <li class="hit hex-{{.Hex}}{{if .Done}} done{{end}}">
+        <a class="hit-title" href="{{.Href}}">{{with .Title}}{{.}}{{else}}(no title){{end}}</a>
+        <div class="hit-meta">
+            <span class="swatch"></span>
+            <span>{{.Container}}</span>
+            {{with .When}}<span>{{.}}</span>{{end}}
+            <span class="muted">{{if eq .Kind "todo"}}todo{{else}}event{{end}}</span>
+        </div>
+        {{with .Snippet}}<p class="hit-snippet">{{.}}</p>{{end}}
+    </li>
+    {{end}}
+</ul>
+<nav class="pager" aria-label="Results">
+    {{with .Data.PrevHref}}<a class="btn btn-small" href="{{.}}" rel="prev">Previous</a>{{end}}
+    {{with .Data.NextHref}}<a class="btn btn-small" href="{{.}}" rel="next">Next</a>{{end}}
+</nav>
+{{else}}
+<p class="muted">Nothing matched. Try fewer words, or drop a filter.</p>
+{{end}}
+{{end}}

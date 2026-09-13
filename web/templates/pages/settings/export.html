@@ -1,0 +1,31 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Export</h1>
+<section class="card">
+    <h2>Calendars</h2>
+    <form method="get" action="/settings/export/download" class="form">
+        <fieldset class="field">
+            <legend>Which calendars</legend>
+            <div class="checks-row">
+                {{range .Data.Calendars}}<label class="check"><input type="checkbox" name="cal" value="{{.ID}}" checked> {{.Name}}</label>{{end}}
+            </div>
+            <p class="hint">Leave every box ticked to export all of them.</p>
+        </fieldset>
+        <div class="field">
+            <label for="ex-format">Format</label>
+            <select id="ex-format" name="format">
+                <option value="ics">iCalendar (.ics)</option>
+                <option value="csv">Spreadsheet (.csv)</option>
+            </select>
+            <p class="hint">Use .ics to move events into another calendar app. The .csv holds one row per event and drops recurring occurrences.</p>
+        </div>
+        <div><button type="submit" class="btn btn-primary">Download</button></div>
+    </form>
+</section>
+<section class="card">
+    <h2>Everything</h2>
+    <p class="muted">One YAML file with every calendar, todo list, checklist and your settings. This is the format that imports back with nothing lost.</p>
+    <a class="btn" href="/settings/export/download?format=yaml">Download account.yaml</a>
+</section>
+{{end}}

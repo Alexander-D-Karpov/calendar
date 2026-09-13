@@ -1,0 +1,85 @@
+{{template "base" .}}
+{{define "head-extra"}}<link rel="stylesheet" href="{{asset "css/calendar.css"}}">{{end}}
+{{define "content"}}{{template "todo_form" .}}{{end}}
+{{define "todo_form"}}
+<form method="post" action="{{.Data.Action}}" class="form event-form" autocomplete="off">
+    <header class="form-head">
+        <h1>{{.Title}}</h1>
+        {{if .Fragment}}<button type="button" class="btn-link" data-close>Close</button>{{end}}
+    </header>
+    {{with .Data.ParentTitle}}<p class="muted">Subtask of {{.}}</p>{{end}}
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="form" value="full">
+    {{with .Data.ETag}}<input type="hidden" name="etag" value="{{.}}">{{end}}
+    {{with .Data.Back}}<input type="hidden" name="back" value="{{.}}">{{end}}
+    {{with .Form.Get "parent_id"}}<input type="hidden" name="parent_id" value="{{.}}">{{end}}
+    <input class="title-input" name="title" type="text" maxlength="1000" autocomplete="off" required placeholder="Add title" aria-label="Title" autofocus value="{{.Form.Get "title"}}"{{if .Form.Err "title"}} aria-invalid="true"{{end}}>
+    {{with .Form.Err "title"}}<p class="field-error">{{.}}</p>{{end}}
+    <div class="when">
+        <input name="due_date" type="date" aria-label="Due date" value="{{.Form.Get "due_date"}}">
+        <input name="due_time" type="time" step="300" aria-label="Time, optional" value="{{.Form.Get "due_time"}}">
+        {{if .Data.AllowList}}
+        <select name="list_id" aria-label="List">
+            {{range .Data.Lists}}<option value="{{.ID}}"{{if eq ($.Form.Get "list_id") (.ID.String)}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+        {{end}}
+    </div>
+    {{with .Form.Err "due_date"}}<p class="field-error">Due date: {{.}}</p>{{end}}
+    {{with .Form.Err "due_time"}}<p class="field-error">Time: {{.}}</p>{{end}}
+    {{with .Form.Err "list_id"}}<p class="field-error">{{.}}</p>{{end}}
+    {{with .Form.Err "parent_id"}}<p class="field-error">{{.}}</p>{{end}}
+    <details class="form-more"{{if .Form.Any "duration_min" "timezone" "rrule" "reminders" "body" "priority"}} open{{end}}>
+        <summary>More options</summary>
+        <div class="form">
+            <div class="row">
+                <div class="field">
+                    <label for="td-prio">Priority</label>
+                    <select id="td-prio" name="priority">
+                        {{range .Data.Priorities}}<option value="{{.Value}}"{{if eq ($.Form.Get "priority") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="td-dur">Minutes</label>
+                    <input id="td-dur" name="duration" type="number" min="1" max="1440" autocomplete="off" value="{{.Form.Get "duration"}}">
+                    {{with .Form.Err "duration_min"}}<p class="field-error">{{.}}</p>{{end}}
+                </div>
+                <div class="field">
+                    <label for="td-show">On calendar</label>
+                    <select id="td-show" name="show">
+                        {{range .Data.Shows}}<option value="{{.Value}}"{{if eq ($.Form.Get "show") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+                    </select>
+                </div>
+            </div>
+            <div class="when">
+                <select name="repeat" aria-label="Repeat">
+                    {{range .Data.Repeats}}<option value="{{.Value}}"{{if eq ($.Form.Get "repeat") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+                </select>
+                <input name="rrule" type="text" class="mono" spellcheck="false" autocomplete="off" placeholder="FREQ=WEEKLY;BYDAY=MO" aria-label="Custom rule" value="{{.Form.Get "rrule"}}" data-custom-rule>
+            </div>
+            {{with .Form.Err "rrule"}}<p class="field-error">Repeat: {{.}}</p>{{end}}
+            <div class="row">
+                <div class="field">
+                    <label for="td-tz">Timezone</label>
+                    <input id="td-tz" name="timezone" type="text" spellcheck="false" autocomplete="off" value="{{.Form.Get "timezone"}}"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                    {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{end}}
+                </div>
+                <div class="field">
+                    <label for="td-rem">Reminders, minutes before</label>
+                    <input id="td-rem" name="reminders" type="text" inputmode="numeric" autocomplete="off" value="{{.Form.Get "reminders"}}"{{if .Form.Err "reminders"}} aria-invalid="true"{{end}}>
+                    {{with .Form.Err "reminders"}}<p class="field-error">{{.}}</p>{{end}}
+                </div>
+            </div>
+            <div class="field">
+                <label for="td-body">Notes</label>
+                <textarea id="td-body" name="body" rows="4">{{.Form.Values.Get "body"}}</textarea>
+                {{with .Form.Err "body"}}<p class="field-error">{{.}}</p>{{end}}
+            </div>
+        </div>
+    </details>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn" href="{{.Data.Cancel}}" data-close>Cancel</a>
+    </div>
+</form>
+{{end}}

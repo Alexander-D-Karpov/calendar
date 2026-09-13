@@ -1,0 +1,68 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Subscriptions</h1>
+<p class="muted">Follow a calendar published elsewhere. It appears as a read-only calendar here and refreshes on its own.</p>
+<section class="card">
+    <h2>Add</h2>
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    <form method="post" action="/settings/subscriptions" class="form">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <div class="field">
+            <label for="sub-url">Address</label>
+            <input id="sub-url" name="url" type="text" inputmode="url" spellcheck="false" required placeholder="https://example.com/calendar.ics" value="{{.Form.Get "url"}}"{{if .Form.Err "url"}} aria-invalid="true"{{end}}>
+            {{with .Form.Err "url"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">An http, https or webcal link to an .ics file.</p>{{end}}
+        </div>
+        <div class="row">
+            <div class="field">
+                <label for="sub-name">Name</label>
+                <input id="sub-name" name="name" type="text" maxlength="100" placeholder="the site name" value="{{.Form.Get "name"}}">
+            </div>
+            <div class="field">
+                <label for="sub-every">Refresh every</label>
+                <input id="sub-every" name="every" type="text" value="{{.Form.Get "every"}}"{{if .Form.Err "every"}} aria-invalid="true"{{end}}>
+                {{with .Form.Err "every"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">At least {{.Data.MinEvery}}.</p>{{end}}
+            </div>
+        </div>
+        <div><button type="submit" class="btn btn-primary">Subscribe</button></div>
+    </form>
+</section>
+{{with .Data.Rows}}
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+        <tr><th>Calendar</th><th>Address</th><th>Refresh</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+        {{range .}}
+        <tr>
+            <td>{{with .Calendar.Name}}{{.}}{{else}}{{$.Host}}{{end}}</td>
+            <td class="mono small">{{with .URL}}{{.}}{{else}}{{.Host}}{{end}}</td>
+            <td>{{.Interval}}</td>
+            <td>
+                {{if eq .Status "error"}}<span class="badge badge-muted">failing</span>
+                {{else if eq .Status "paused"}}<span class="badge badge-muted">paused</span>
+                {{else}}{{with .LastOKAt}}Updated {{$.Time .}}{{else}}<span class="muted">waiting</span>{{end}}{{end}}
+                {{with .LastError}}<div class="field-error small">{{.}}</div>{{end}}
+            </td>
+            <td class="actions">
+                <div class="actions-row">
+                    <form method="post" action="/settings/subscriptions/{{.ID}}/refresh">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                        <button type="submit" class="btn btn-small">Refresh</button>
+                    </form>
+                    <form method="post" action="/settings/subscriptions/{{.ID}}/delete" data-confirm="Remove this subscription and its calendar?">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                        <button type="submit" class="btn btn-small btn-danger">Remove</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<p class="muted">No subscriptions yet.</p>
+{{end}}
+{{end}}

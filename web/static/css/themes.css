@@ -1,0 +1,31 @@
+:root {
+    color-scheme: light dark;
+    --bg: light-dark(#ffffff, #1b1f23);
+    --surface: light-dark(#f6f8fa, #22262b);
+    --surface-2: light-dark(#eef1f4, #2b3036);
+    --fg: light-dark(#1f2328, #e3e6ea);
+    --muted: light-dark(#59636e, #9aa3ad);
+    --border: light-dark(#d1d9e0, #373c43);
+    --border-strong: light-dark(#afb8c1, #4a515a);
+    --accent: light-dark(#2f6199, #79a8dc);
+    --accent-fg: light-dark(#ffffff, #1b1f23);
+    --accent-soft: light-dark(#e6eef7, #1b2a3b);
+    --danger: light-dark(#b42318, #f07167);
+    --danger-soft: light-dark(#fdecea, #3a1b1a);
+    --ok: light-dark(#1a7f37, #56c271);
+    --ok-soft: light-dark(#e7f5ea, #16301f);
+    --radius: 6px;
+    --bar-h: 2.5rem;
+    --bar-item-h: 1.75rem;
+    --icon: 16px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+}

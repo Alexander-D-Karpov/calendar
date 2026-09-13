@@ -1,0 +1,98 @@
+{{template "base" .}}
+{{define "head-extra"}}<link rel="stylesheet" href="{{asset "css/calendar.css"}}">{{end}}
+{{define "content"}}{{template "event_form" .}}{{end}}
+{{define "event_form"}}
+<form method="post" action="{{.Data.Action}}" class="form event-form" autocomplete="off">
+    <header class="form-head">
+        <h1>{{.Title}}</h1>
+        {{if .Fragment}}<button type="button" class="btn-link" data-close>Close</button>{{end}}
+    </header>
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    {{with .Data.Back}}<input type="hidden" name="back" value="{{.}}">{{end}}
+    {{with .Data.ETag}}<input type="hidden" name="etag" value="{{.}}">{{end}}
+    {{with .Data.Instance}}<input type="hidden" name="instance" value="{{.}}">{{end}}
+    <input class="title-input" name="title" type="text" maxlength="1000" autocomplete="off" placeholder="Add title" aria-label="Title" autofocus value="{{.Form.Get "title"}}"{{if .Form.Err "title"}} aria-invalid="true"{{end}}>
+    {{with .Form.Err "title"}}<p class="field-error">{{.}}</p>{{end}}
+    <div class="when">
+        <input name="start_date" type="date" required aria-label="Date" value="{{.Form.Get "start_date"}}">
+        <span class="when-times" data-timed>
+            <input name="start_time" type="time" step="300" aria-label="Start time" value="{{.Form.Get "start_time"}}">
+            <span class="muted">to</span>
+            <input name="end_time" type="time" step="300" aria-label="End time" value="{{.Form.Get "end_time"}}">
+        </span>
+        <label class="check"><input type="checkbox" name="all_day" value="1"{{if eq (.Form.Get "all_day") "1"}} checked{{end}}> All day</label>
+        {{if gt (len .Data.Calendars) 1}}
+        <select name="calendar_id" aria-label="Calendar">
+            {{range .Data.Calendars}}<option value="{{.ID}}"{{if eq ($.Form.Get "calendar_id") (.ID.String)}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+        {{else}}
+        <input type="hidden" name="calendar_id" value="{{.Form.Get "calendar_id"}}">
+        {{end}}
+    </div>
+    {{with .Form.Err "start"}}<p class="field-error">Start: {{.}}</p>{{end}}
+    {{with .Form.Err "end"}}<p class="field-error">End: {{.}}</p>{{end}}
+    {{with .Form.Err "calendar_id"}}<p class="field-error">{{.}}</p>{{end}}
+    {{with .Data.Scopes}}
+    <div class="checks-row" role="radiogroup" aria-label="Apply changes to">
+        {{range .}}<label class="check"><input type="radio" name="scope" value="{{.Value}}"{{if eq ($.Form.Get "scope") .Value}} checked{{end}}> {{.Label}}</label>{{end}}
+    </div>
+    {{end}}
+    <details class="form-more"{{if or (.Form.Any "timezone" "location" "url" "body" "reminders" "color" "rrule") (ne (.Form.Get "repeat") "none")}} open{{end}}>
+        <summary>More options</summary>
+        <div class="form">
+            <div class="when">
+                <select name="repeat" aria-label="Repeat">
+                    {{range .Data.Repeats}}<option value="{{.Value}}"{{if eq ($.Form.Get "repeat") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+                </select>
+                <input name="rrule" type="text" class="mono" spellcheck="false" autocomplete="off" placeholder="FREQ=WEEKLY;BYDAY=MO,WE" aria-label="Custom rule" value="{{.Form.Get "rrule"}}" data-custom-rule>
+            </div>
+            {{with .Form.Err "rrule"}}<p class="field-error">Repeat: {{.}}</p>{{end}}
+            <div class="row">
+                <div class="field"><label for="ev-ed">Ends on</label><input id="ev-ed" name="end_date" type="date" value="{{.Form.Get "end_date"}}"></div>
+                <div class="field" data-timed>
+                    <label for="ev-tz">Timezone</label>
+                    <input id="ev-tz" name="timezone" type="text" spellcheck="false" autocomplete="off" value="{{.Form.Get "timezone"}}"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                    {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{end}}
+                </div>
+            </div>
+            <div class="field">
+                <label for="ev-loc">Location</label>
+                <input id="ev-loc" name="location" type="text" maxlength="1000" autocomplete="off" value="{{.Form.Get "location"}}">
+                {{with .Form.Err "location"}}<p class="field-error">{{.}}</p>{{end}}
+            </div>
+            <div class="field">
+                <label for="ev-url">Link</label>
+                <input id="ev-url" name="url" type="url" maxlength="2048" autocomplete="off" value="{{.Form.Get "url"}}"{{if .Form.Err "url"}} aria-invalid="true"{{end}}>
+                {{with .Form.Err "url"}}<p class="field-error">{{.}}</p>{{end}}
+            </div>
+            <div class="field">
+                <label for="ev-body">Description</label>
+                <textarea id="ev-body" name="body" rows="4">{{.Form.Values.Get "body"}}</textarea>
+                {{with .Form.Err "body"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Markdown is supported.</p>{{end}}
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label for="ev-rem">Reminders, minutes before</label>
+                    <input id="ev-rem" name="reminders" type="text" inputmode="numeric" autocomplete="off" value="{{.Form.Get "reminders"}}"{{if .Form.Err "reminders"}} aria-invalid="true"{{end}}>
+                    {{with .Form.Err "reminders"}}<p class="field-error">{{.}}</p>{{end}}
+                </div>
+                <div class="field">
+                    <label for="ev-color">Color</label>
+                    <input id="ev-color" name="color" type="text" class="mono" autocomplete="off" placeholder="calendar color" maxlength="7" value="{{.Form.Get "color"}}"{{if .Form.Err "color"}} aria-invalid="true"{{end}}>
+                    {{with .Form.Err "color"}}<p class="field-error">{{.}}</p>{{end}}
+                </div>
+            </div>
+            <div class="checks-row">
+                <label class="check"><input type="checkbox" name="status" value="tentative"{{if eq (.Form.Get "status") "tentative"}} checked{{end}}> Tentative</label>
+                <label class="check"><input type="checkbox" name="private" value="1"{{if eq (.Form.Get "private") "1"}} checked{{end}}> Private</label>
+                <label class="check"><input type="checkbox" name="free" value="1"{{if eq (.Form.Get "free") "1"}} checked{{end}}> Show as free</label>
+            </div>
+        </div>
+    </details>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn" href="{{.Data.Cancel}}" data-close>Cancel</a>
+    </div>
+</form>
+{{end}}

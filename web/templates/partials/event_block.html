@@ -1,0 +1,9 @@
+{{define "tick"}}{{if .Todo}}<span class="tick" role="checkbox" aria-checked="{{.Done}}" aria-label="Done"{{with .ToggleHref}} data-toggle="{{.}}"{{else}} aria-disabled="true"{{end}}></span>{{end}}{{end}}
+{{define "event_block"}}
+<a class="block {{.Class}}{{if .Short}} short{{end}}{{if .Tentative}} tentative{{end}}{{if .Todo}} todo{{if .Done}} done{{end}}{{end}}{{if .Before}} cont-before{{end}}{{if .After}} cont-after{{end}}"{{with .Href}} href="{{.}}"{{end}}{{if and .Href (not .Todo)}} data-dialog{{end}}{{with .MoveHref}} data-move="{{.}}" draggable="false"{{end}}{{with .Instance}} data-instance="{{.}}"{{end}} title="{{.DisplayTitle}}, {{.TimeLabel}}">
+    {{if .Short}}<span class="block-title">{{template "tick" .}}{{.DisplayTitle}}</span><span class="block-time">{{.TimeLabel}}</span>
+    {{else}}<span class="block-time">{{.TimeLabel}}</span><span class="block-title">{{template "tick" .}}{{.DisplayTitle}}{{with .Progress}} <span class="progress">{{.}}</span>{{end}}</span>{{with .Location}}<span class="block-loc">{{.}}</span>{{end}}{{with .Excerpt}}<span class="block-excerpt">{{.}}</span>{{end}}{{end}}
+    {{if .MoveHref}}<span class="grip grip-start" data-grip="start" aria-hidden="true"></span><span class="grip grip-end" data-grip="end" aria-hidden="true"></span>{{end}}
+</a>
+{{end}}
+{{define "bar"}}<a class="bar {{.Class}}{{if not .Long}} timed{{end}}{{if .Tentative}} tentative{{end}}{{if .Todo}} todo{{if .Done}} done{{end}}{{end}}{{if .Before}} cont-before{{end}}{{if .After}} cont-after{{end}}"{{with .Href}} href="{{.}}"{{end}}{{if and .Href (not .Todo)}} data-dialog{{end}} title="{{.DisplayTitle}}">{{template "tick" .}}{{with .TimeLabel}}<span class="bar-time">{{.}}</span> {{end}}{{.DisplayTitle}}{{with .Progress}} <span class="progress">{{.}}</span>{{end}}</a>{{end}}

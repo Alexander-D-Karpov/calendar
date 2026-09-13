@@ -1,0 +1,205 @@
+.main-wide {
+    max-width: 90rem;
+}
+
+/* Swagger UI ships a light-only stylesheet with hardcoded colours. The rules
+   below repaint its surfaces with the app tokens, which already resolve per
+   theme, so the panel follows light and dark like the rest of the site.
+   No color-scheme override here: it inherits the one set on :root. */
+.api-docs {
+    margin-top: 1rem;
+    padding: 0.5rem 0 1rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.api-docs code {
+    padding: 0;
+    background: none;
+    border-radius: 0;
+}
+
+.api-docs .swagger-ui .info {
+    margin: 1.25rem 0;
+}
+
+.api-docs .swagger-ui .scheme-container {
+    padding: 1rem 0;
+    background: var(--bg);
+    box-shadow: none;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+/* Text. Swagger sets #3b4151 on dozens of selectors, so these mirror the list
+   rather than relying on inheritance. */
+.api-docs .swagger-ui,
+.api-docs .swagger-ui .info .title,
+.api-docs .swagger-ui .info li,
+.api-docs .swagger-ui .info p,
+.api-docs .swagger-ui .info table,
+.api-docs .swagger-ui .opblock .opblock-section-header h4,
+.api-docs .swagger-ui .opblock .opblock-section-header > label,
+.api-docs .swagger-ui .opblock .opblock-summary-description,
+.api-docs .swagger-ui .opblock .opblock-summary-operation-id,
+.api-docs .swagger-ui .opblock .opblock-summary-path,
+.api-docs .swagger-ui .opblock .opblock-summary-path__deprecated,
+.api-docs .swagger-ui .opblock-description-wrapper,
+.api-docs .swagger-ui .opblock-description-wrapper h4,
+.api-docs .swagger-ui .opblock-description-wrapper p,
+.api-docs .swagger-ui .opblock-external-docs-wrapper,
+.api-docs .swagger-ui .opblock-external-docs-wrapper h4,
+.api-docs .swagger-ui .opblock-external-docs-wrapper p,
+.api-docs .swagger-ui .opblock-tag,
+.api-docs .swagger-ui .opblock-tag small,
+.api-docs .swagger-ui .opblock-title_normal,
+.api-docs .swagger-ui .opblock-title_normal h4,
+.api-docs .swagger-ui .opblock-title_normal p,
+.api-docs .swagger-ui .parameter__name,
+.api-docs .swagger-ui .parameter__type,
+.api-docs .swagger-ui .parameter__extension,
+.api-docs .swagger-ui .parameter__in,
+.api-docs .swagger-ui .response-col_links,
+.api-docs .swagger-ui .response-col_status,
+.api-docs .swagger-ui .responses-inner h4,
+.api-docs .swagger-ui .responses-inner h5,
+.api-docs .swagger-ui .tab li,
+.api-docs .swagger-ui label,
+.api-docs .swagger-ui table thead tr td,
+.api-docs .swagger-ui table thead tr th,
+.api-docs .swagger-ui .model,
+.api-docs .swagger-ui .model-title,
+.api-docs .swagger-ui section.models h4,
+.api-docs .swagger-ui section.models h5,
+.api-docs .swagger-ui .dialog-ux .modal-ux-content h4,
+.api-docs .swagger-ui .dialog-ux .modal-ux-content p,
+.api-docs .swagger-ui .dialog-ux .modal-ux-header h3,
+.api-docs .swagger-ui .renderedMarkdown h1,
+.api-docs .swagger-ui .renderedMarkdown h2,
+.api-docs .swagger-ui .renderedMarkdown h3,
+.api-docs .swagger-ui .renderedMarkdown h4,
+.api-docs .swagger-ui .renderedMarkdown h5,
+.api-docs .swagger-ui .info h1,
+.api-docs .swagger-ui .info h2,
+.api-docs .swagger-ui .info h3,
+.api-docs .swagger-ui .info h4,
+.api-docs .swagger-ui .info h5,
+.api-docs .swagger-ui .info .title small pre {
+    color: var(--fg);
+}
+
+.api-docs .swagger-ui .info .base-url,
+.api-docs .swagger-ui .parameter__type,
+.api-docs .swagger-ui .parameter__in,
+.api-docs .swagger-ui .opblock .opblock-summary-description,
+.api-docs .swagger-ui .prop-format,
+.api-docs .swagger-ui .renderedMarkdown p,
+.api-docs .swagger-ui .opblock-tag small {
+    color: var(--muted);
+}
+
+.api-docs .swagger-ui a,
+.api-docs .swagger-ui .info a,
+.api-docs .swagger-ui .info a:hover {
+    color: var(--accent);
+}
+
+/* Operation blocks, panels and separators. */
+.api-docs .swagger-ui .opblock {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    box-shadow: none;
+}
+
+.api-docs .swagger-ui .opblock .opblock-section-header {
+    background: var(--surface-2);
+    box-shadow: none;
+}
+
+.api-docs .swagger-ui .opblock-tag,
+.api-docs .swagger-ui section.models,
+.api-docs .swagger-ui section.models.is-open h4,
+.api-docs .swagger-ui .opblock .opblock-summary {
+    border-color: var(--border);
+}
+
+.api-docs .swagger-ui section.models {
+    background: var(--surface);
+}
+
+.api-docs .swagger-ui .model-box {
+    background: var(--surface-2);
+}
+
+/* The model toggle is a dark SVG in a background image, so it has to be
+   inverted rather than recoloured. This is the one rule that cannot read a
+   token, hence the explicit light and dark branches. */
+:root[data-theme="dark"] .api-docs .swagger-ui .model-toggle:after {
+    filter: invert(0.85);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .api-docs .swagger-ui .model-toggle:after {
+        filter: invert(0.85);
+    }
+}
+
+.api-docs .swagger-ui table thead tr td,
+.api-docs .swagger-ui table thead tr th {
+    border-color: var(--border);
+}
+
+/* Form controls and code samples. */
+.api-docs .swagger-ui input[type="email"],
+.api-docs .swagger-ui input[type="file"],
+.api-docs .swagger-ui input[type="password"],
+.api-docs .swagger-ui input[type="search"],
+.api-docs .swagger-ui input[type="text"],
+.api-docs .swagger-ui textarea,
+.api-docs .swagger-ui select {
+    color: var(--fg);
+    background: var(--bg);
+    border-color: var(--border-strong);
+}
+
+.api-docs .swagger-ui .microlight,
+.api-docs .swagger-ui .highlight-code > .microlight {
+    color: var(--fg);
+    background: var(--surface-2);
+}
+
+.api-docs .swagger-ui .btn {
+    color: var(--fg);
+    background: var(--surface);
+    border-color: var(--border-strong);
+    box-shadow: none;
+}
+
+.api-docs .swagger-ui .btn.authorize {
+    color: var(--ok);
+    border-color: var(--ok);
+}
+
+.api-docs .swagger-ui .btn.authorize svg {
+    fill: var(--ok);
+}
+
+.api-docs .swagger-ui .dialog-ux .modal-ux {
+    background: var(--bg);
+    border-color: var(--border-strong);
+}
+
+.api-docs .swagger-ui .dialog-ux .modal-ux-header {
+    border-color: var(--border);
+}
+
+/* The expand/collapse and model arrows are filled, not stroked. */
+.api-docs .swagger-ui .expand-methods svg,
+.api-docs .swagger-ui .expand-operation svg,
+.api-docs .swagger-ui section.models h4 svg,
+.api-docs .swagger-ui .opblock-summary-control svg,
+.api-docs .swagger-ui .arrow {
+    fill: var(--muted);
+}

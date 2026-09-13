@@ -1,0 +1,32 @@
+{{template "base" .}}
+{{define "main"}}{{template "auth-main" .}}{{end}}
+{{define "content"}}
+<h1>Sign in</h1>
+{{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+<form method="post" action="/login" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="next" value="{{.Form.Get "next"}}">
+    <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required autofocus value="{{.Form.Get "email"}}"{{if .Form.Err "email"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "email"}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+</form>
+{{if .SMTPEnabled}}<p class="muted auth-alt"><a href="/forgot">Forgot your password?</a></p>{{end}}
+{{if .GoogleLogin}}
+<p class="auth-or muted">or</p>
+<form method="post" action="/auth/google" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="intent" value="login">
+    <input type="hidden" name="next" value="{{.Form.Get "next"}}">
+    <input type="hidden" name="timezone" value="" data-timezone>
+    <button type="submit" class="btn btn-block">{{template "icon-google"}}<span>Continue with Google</span></button>
+</form>
+{{end}}
+{{if .RegistrationOpen}}<p class="muted auth-alt">No account yet? <a href="/register">Create one</a></p>{{end}}
+{{end}}

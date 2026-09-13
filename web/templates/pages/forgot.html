@@ -1,0 +1,17 @@
+{{template "base" .}}
+{{define "main"}}{{template "auth-main" .}}{{end}}
+{{define "content"}}
+<h1>Reset your password</h1>
+<p class="muted">Enter the address you signed up with and we will send a link.</p>
+{{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+<form method="post" action="/forgot" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required autofocus value="{{.Form.Get "email"}}"{{if .Form.Err "email"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "email"}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Send the link</button>
+</form>
+<p class="muted auth-alt"><a href="/login">Back to sign in</a></p>
+{{end}}

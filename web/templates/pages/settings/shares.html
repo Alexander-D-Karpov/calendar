@@ -1,0 +1,50 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<header class="section-head">
+    <h1>Share links</h1>
+    <a class="btn btn-primary" href="/settings/shares/new" data-dialog>New link</a>
+</header>
+<p class="muted">A link shows one fixed period read-only and updates live. Private events are never shown. Use Share on the calendar to create a link for the period you are looking at.</p>
+{{if .Data.Rows}}
+<ul class="share-list">
+    {{range .Data.Rows}}
+    <li class="card share-item" id="share-{{.ID}}">
+        <header class="section-head">
+            <h2>{{.Name}}</h2>
+            {{if not .Active}}<span class="badge badge-muted">revoked</span>{{end}}
+        </header>
+        <p class="muted">{{.Summary}} · {{.DetailLabel}}{{with .CalendarNames}} · {{.}}{{end}}{{if .IncludeTodos}} · todos{{end}}{{if .ShowSleep}} · sleep{{end}}</p>
+        {{if .URL}}
+        <div class="token-box">
+            <input id="link-{{.ID}}" class="mono" type="text" readonly value="{{.URL}}" aria-label="Link">
+            <button type="button" class="btn" data-copy="link-{{.ID}}" hidden>Copy</button>
+            <a class="btn" href="{{.URL}}" target="_blank" rel="noopener">Open</a>
+        </div>
+        <div class="token-box">
+            <input id="feed-{{.ID}}" class="mono" type="text" readonly value="{{.FeedURL}}" aria-label="Calendar feed">
+            <button type="button" class="btn" data-copy="feed-{{.ID}}" hidden>Copy</button>
+        </div>
+        <p class="muted small">Subscribe to the feed in another calendar app to keep it in sync.</p>
+        {{end}}
+        <p class="muted small">Opened {{.AccessCount}} times{{with .LastAccessedAt}}, last on {{$.Time .}}{{end}}.</p>
+        {{if .Active}}
+        <div class="actions-row">
+            <a class="btn btn-small" href="/settings/shares/{{.ID}}/edit" data-dialog>Edit</a>
+            <form method="post" action="/settings/shares/{{.ID}}/regenerate">
+                <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                <button type="submit" class="btn btn-small">New address</button>
+            </form>
+            <form method="post" action="/settings/shares/{{.ID}}/revoke">
+                <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                <button type="submit" class="btn btn-small btn-danger">Revoke</button>
+            </form>
+        </div>
+        {{end}}
+    </li>
+    {{end}}
+</ul>
+{{else}}
+<p class="muted">No share links yet.</p>
+{{end}}
+{{end}}

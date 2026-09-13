@@ -1,0 +1,21 @@
+{{template "base" .}}
+{{define "head-extra"}}
+<link rel="stylesheet" href="{{asset "css/slots.css"}}">
+<link rel="stylesheet" href="{{asset "css/calendar.css"}}">
+<script src="{{asset "js/calendar.js"}}" defer></script>
+{{end}}
+{{define "main"}}
+<main class="cal">
+    {{template "calendar_toolbar" .}}
+    <div class="cal-body">
+        {{template "calendar_sidebar" .}}
+        {{template "calendar_view" .}}
+    </div>
+</main>
+{{end}}
+{{define "calendar_view"}}
+<section class="cal-view" data-findable aria-label="{{.Data.Title}}" data-live="{{.Data.Live}}" data-seq="{{.Data.Seq}}" data-from="{{.Data.From}}" data-to="{{.Data.To}}">
+    {{with .Data.Colors}}<link rel="stylesheet" href="{{colors .}}">{{end}}
+    {{template "period_views" .Data}}
+</section>
+{{end}}

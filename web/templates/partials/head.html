@@ -1,0 +1,17 @@
+{{define "head"}}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="{{if eq .Theme "system"}}light dark{{else}}{{.Theme}}{{end}}">
+{{with .CSRF}}<meta name="csrf-token" content="{{.}}">{{end}}
+<title>{{if .Title}}{{.Title}} · {{end}}{{.Footer.AppName}}</title>
+<link rel="icon" href="{{asset "img/favicon.svg"}}" type="image/svg+xml">
+<link rel="stylesheet" href="{{asset "css/themes.css"}}">
+<link rel="stylesheet" href="{{asset "css/base.css"}}">
+<link rel="stylesheet" href="{{asset "css/layout.css"}}">
+<link rel="stylesheet" href="{{asset "css/buttons.css"}}">
+<link rel="stylesheet" href="{{asset "css/forms.css"}}">
+<link rel="stylesheet" href="{{asset "css/settings.css"}}">
+<script src="{{asset "js/app.js"}}" defer></script>
+<script src="{{asset "js/find.js"}}" defer></script>
+{{block "head-extra" .}}{{end}}
+{{end}}

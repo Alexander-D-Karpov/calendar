@@ -1,0 +1,13 @@
+{{define "todo_quick"}}
+{{with .Data.QuickList}}
+<form method="post" action="/todos" class="quick-add" data-quick>
+    <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+    <input type="hidden" name="quick" value="1">
+    <input type="hidden" name="back" value="{{$.Data.Back}}">
+    <input type="hidden" name="list_id" value="{{.}}">
+    <input type="text" name="title" placeholder="Add a todo — try “pay rent friday 18:00 !!”" autocomplete="off" aria-label="New todo" maxlength="1000" required>
+    <button type="submit" class="btn btn-primary">Add</button>
+    <p class="hint quick-hint" data-quick-hint hidden></p>
+</form>
+{{end}}
+{{end}}

@@ -1,0 +1,28 @@
+{{define "header"}}
+<header class="site-header">
+    <a class="brand" href="/">{{template "icon-brand"}}<span class="bar-label">{{.Footer.AppName}}</span></a>
+    {{if .User}}
+    <nav class="site-nav" aria-label="Main">
+        <a href="/"{{if eq .Nav "calendar"}} aria-current="page"{{end}}>{{template "icon-calendar"}}<span>Calendar</span></a>
+        <a href="/todos"{{if eq .Nav "todos"}} aria-current="page"{{end}}>{{template "icon-todos"}}<span>Todos</span></a>
+        <a href="/settings/profile"{{if .InSettings}} aria-current="page"{{end}}>{{template "icon-settings"}}<span>Settings</span></a>
+    </nav>
+    <form method="get" action="/search" class="header-search" role="search">
+        <label for="header-q" class="sr-only">Search</label>
+        <input id="header-q" name="q" type="search" autocomplete="off" placeholder="Search" data-search>
+    </form>
+    <div class="site-user">
+        <span class="bar-item">{{template "icon-user"}}<span class="bar-label">{{.User.Name}}</span></span>
+        <form method="post" action="/logout">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <button type="submit" class="bar-item bar-action">{{template "icon-signout"}}<span class="bar-label">Sign out</span></button>
+        </form>
+    </div>
+    {{else}}
+    <nav class="site-nav site-user" aria-label="Account">
+        <a class="bar-item" href="/login">{{template "icon-signin"}}<span>Sign in</span></a>
+        {{if .RegistrationOpen}}<a class="bar-item" href="/register">{{template "icon-register"}}<span>Register</span></a>{{end}}
+    </nav>
+    {{end}}
+</header>
+{{end}}

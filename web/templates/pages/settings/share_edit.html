@@ -1,0 +1,52 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}{{template "share_form" .}}{{end}}
+{{define "share_form"}}
+<form method="post" action="{{.Data.Action}}" class="form event-form">
+    <header class="form-head">
+        <h1>{{.Title}}</h1>
+        {{if .Fragment}}<button type="button" class="btn-link" data-close>Close</button>{{end}}
+    </header>
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    {{with .Data.ETag}}<input type="hidden" name="etag" value="{{.}}">{{end}}
+    {{with .Data.Back}}<input type="hidden" name="back" value="{{.}}">{{end}}
+    <input class="title-input" name="name" type="text" maxlength="100" required autofocus aria-label="Name" value="{{.Form.Get "name"}}"{{if .Form.Err "name"}} aria-invalid="true"{{end}}>
+    {{with .Form.Err "name"}}<p class="field-error">{{.}}</p>{{end}}
+    {{if .Data.IsNew}}
+    <div class="when">
+        <select name="view" aria-label="View">
+            {{range .Data.Views}}<option value="{{.Value}}"{{if eq ($.Form.Get "view") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        <input name="period" type="date" required aria-label="Period" value="{{.Form.Get "period"}}">
+    </div>
+    {{with .Form.Err "view"}}<p class="field-error">{{.}}</p>{{end}}
+    {{with .Form.Err "period"}}<p class="field-error">{{.}}</p>{{end}}
+    {{else}}
+    <p class="muted">{{.Data.Summary}}. The period of a link is fixed.</p>
+    {{end}}
+    <fieldset class="field">
+        <legend>Calendars</legend>
+        <div class="checks-row">
+            {{range .Data.Calendars}}<label class="check"><input type="checkbox" name="cal" value="{{.ID}}"{{if .Checked}} checked{{end}}> {{.Name}}</label>{{end}}
+        </div>
+        {{with .Form.Err "calendars"}}<p class="field-error">{{.}}</p>{{end}}
+    </fieldset>
+    <div class="when">
+        <select name="detail" aria-label="Detail">
+            {{range .Data.Details}}<option value="{{.Value}}"{{if eq ($.Form.Get "detail") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        <select name="tz_mode" aria-label="Timezone">
+            {{range .Data.TZModes}}<option value="{{.Value}}"{{if eq ($.Form.Get "tz_mode") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+    </div>
+    <div class="checks-row">
+        <label class="check"><input type="checkbox" name="todos" value="1"{{if eq (.Form.Get "todos") "1"}} checked{{end}}> Include todos</label>
+        <label class="check"><input type="checkbox" name="sleep" value="1"{{if eq (.Form.Get "sleep") "1"}} checked{{end}}> Show sleep hours</label>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn" href="{{.Data.Cancel}}" data-close>Cancel</a>
+    </div>
+</form>
+{{end}}

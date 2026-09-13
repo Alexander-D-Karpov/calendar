@@ -1,0 +1,56 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<header class="section-head">
+    <h1>Duplicates</h1>
+    <form method="post" action="/settings/duplicates/scan">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button type="submit" class="btn">Scan now</button>
+    </form>
+</header>
+{{if eq .Data.Policy "off"}}
+<p class="muted">Duplicate checking is off. Turn it on under <a href="/settings/profile">Profile</a> to have imports and syncs checked.</p>
+{{else}}
+<p class="muted">Entries that look like copies of each other. {{.Data.Pending}} waiting for review. Nothing is deleted here without you choosing it.</p>
+{{end}}
+<nav class="filter-row" aria-label="Status">
+    {{range .Data.Statuses}}<a href="/settings/duplicates?status={{.Value}}"{{if eq $.Data.Status .Value}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+</nav>
+{{with .Data.Pairs}}
+<ul class="pair-list">
+    {{range .}}
+    <li class="card pair">
+        <p class="muted small">
+            {{if eq .Reason "uid"}}Same identifier{{else if eq .Reason "fingerprint"}}Same title, time and place{{else}}Similar title at a similar time{{end}}
+            · {{if eq .Entity "event"}}events{{else}}todos{{end}}
+            {{if not .Pending}}· {{if eq .Status "merged"}}merged{{else if eq .Status "deleted"}}one deleted{{else}}both kept{{end}}{{end}}
+        </p>
+        <div class="pair-grid">
+            {{template "pair_side" .A}}
+            {{template "pair_side" .B}}
+        </div>
+        {{if .Pending}}
+        <form method="post" action="/settings/duplicates/{{.ID}}" class="actions-row">
+            <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+            <button type="submit" name="action" value="merge" class="btn btn-small btn-primary">Merge</button>
+            <button type="submit" name="action" value="keep_a" class="btn btn-small">Keep the first</button>
+            <button type="submit" name="action" value="keep_b" class="btn btn-small">Keep the second</button>
+            <button type="submit" name="action" value="dismiss" class="btn btn-small">Keep both</button>
+        </form>
+        <p class="hint">Merging fills empty fields from the second and moves it to the trash.</p>
+        {{end}}
+    </li>
+    {{end}}
+</ul>
+{{else}}
+<p class="muted">Nothing here.</p>
+{{end}}
+{{end}}
+{{define "pair_side"}}
+<div class="pair-side">
+    <strong>{{with .Title}}{{.}}{{else}}(no title){{end}}</strong>
+    <div class="muted small">{{.When}}{{with .Location}} · {{.}}{{end}}</div>
+    {{with .Body}}<p class="small">{{.}}</p>{{end}}
+    {{with .Extra}}<div class="muted small">{{range .}}{{.}} {{end}}</div>{{end}}
+</div>
+{{end}}

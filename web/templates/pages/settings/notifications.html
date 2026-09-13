@@ -1,0 +1,50 @@
+{{template "base" .}}
+{{define "head-extra"}}<script src="{{asset "js/push.js"}}" defer></script>{{end}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Notifications</h1>
+{{if .Data.Enabled}}
+<section class="card" data-push data-key="{{.Data.PublicKey}}" data-csrf="{{.CSRF}}" data-action="/settings/notifications/subscribe">
+    <p class="muted">Reminders for events and todos are delivered as system notifications to the devices you allow here.</p>
+    <p class="form-error" role="alert" data-push-error hidden></p>
+    <div class="actions-row">
+        <button type="button" class="btn btn-primary" data-push-enable hidden>Enable on this device</button>
+        <span class="badge" data-push-on hidden>This device is enabled</span>
+    </div>
+    <p class="hint" data-push-unsupported hidden>This browser does not support web push.</p>
+    <p class="hint" data-push-denied hidden>Notifications are blocked for this site. Allow them in the browser's site settings, then reload.</p>
+</section>
+{{else}}
+<p class="muted">Web push is not configured on this server. Generate a key pair with <code>calendar vapid generate</code>, then set <code>WEBPUSH_VAPID_PUBLIC</code>, <code>WEBPUSH_VAPID_PRIVATE</code> and <code>WEBPUSH_VAPID_SUBJECT</code>.</p>
+{{end}}
+{{with .Data.Devices}}
+<div class="table-wrap">
+    <table class="table">
+        <thead><tr><th>Device</th><th>Added</th><th>Last delivery</th><th></th></tr></thead>
+        <tbody>
+        {{range .}}
+        <tr>
+            <td>{{ua .UserAgent}}{{if .Failures}}<div class="muted small">{{.Failures}} failed deliveries</div>{{end}}</td>
+            <td>{{$.Time .CreatedAt}}</td>
+            <td>{{with .LastOKAt}}{{$.Time .}}{{else}}<span class="muted">never</span>{{end}}</td>
+            <td class="actions">
+                <div class="actions-row">
+                    <form method="post" action="/settings/notifications/{{.ID}}/test">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                        <button type="submit" class="btn btn-small">Test</button>
+                    </form>
+                    <form method="post" action="/settings/notifications/{{.ID}}/delete">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                        <button type="submit" class="btn btn-small btn-danger">Remove</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<p class="muted">No devices yet.</p>
+{{end}}
+{{end}}

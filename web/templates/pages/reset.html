@@ -1,0 +1,22 @@
+{{template "base" .}}
+{{define "main"}}{{template "auth-main" .}}{{end}}
+{{define "content"}}
+<h1>Choose a new password</h1>
+{{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+<form method="post" action="/reset" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="token" value="{{.Form.Get "token"}}">
+    <div class="field">
+        <label for="password">New password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" required autofocus{{if .Form.Err "password"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "password"}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div class="field">
+        <label for="password_confirm">Repeat password</label>
+        <input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required{{if .Form.Err "password_confirm"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "password_confirm"}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Change the password</button>
+</form>
+<p class="muted auth-alt"><a href="/login">Back to sign in</a></p>
+{{end}}

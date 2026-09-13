@@ -1,0 +1,20 @@
+{{define "todo_item"}}
+<li class="todo-row hex-{{.Hex}}{{if .Todo.Done}} done{{end}}">
+    <form method="post" action="/todos/{{.Todo.ID}}/toggle" class="tick-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <input type="hidden" name="back" value="{{.Back}}">
+        <button type="submit" class="tick" aria-pressed="{{.Todo.Done}}" aria-label="{{if .Todo.Done}}Reopen{{else}}Complete{{end}}: {{.Todo.Title}}"></button>
+    </form>
+    <div class="todo-main">
+        <a class="todo-title" href="/todos/{{.Todo.ID}}">{{.Todo.Title}}</a>
+        <div class="todo-meta">
+            {{with .Due}}<span class="due{{if $.Overdue}} overdue{{end}}">{{.}}</span>{{end}}
+            {{with .Priority}}<span class="prio prio-{{$.Todo.Priority}}">{{.}}</span>{{end}}
+            {{with .Progress}}<span>{{.}}</span>{{end}}
+            {{if .Todo.RRule}}<span>Repeats</span>{{end}}
+            {{with .ListName}}<span>{{.}}</span>{{end}}
+        </div>
+    </div>
+    {{with .Subtasks}}<ul class="subtasks">{{range .}}{{template "todo_item" .}}{{end}}</ul>{{end}}
+</li>
+{{end}}

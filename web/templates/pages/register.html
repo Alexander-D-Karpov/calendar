@@ -1,0 +1,43 @@
+{{template "base" .}}
+{{define "main"}}{{template "auth-main" .}}{{end}}
+{{define "content"}}
+<h1>Create account</h1>
+{{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+{{with .Form.Err "timezone"}}<p class="form-error" role="alert">Timezone: {{.}}</p>{{end}}
+<form method="post" action="/register" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="timezone" value="{{.Form.Get "timezone"}}" data-timezone>
+    <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required autofocus value="{{.Form.Get "email"}}"{{if .Form.Err "email"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "email"}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div class="field">
+        <label for="display_name">Name <span class="muted">(optional)</span></label>
+        <input id="display_name" name="display_name" type="text" autocomplete="name" maxlength="100" value="{{.Form.Get "display_name"}}"{{if .Form.Err "display_name"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "display_name"}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" required minlength="{{.Data.MinPassword}}"{{if .Form.Err "password"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "password"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">At least {{.Data.MinPassword}} characters.</p>{{end}}
+    </div>
+    <div class="field">
+        <label for="password_confirm">Repeat password</label>
+        <input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required{{if .Form.Err "password_confirm"}} aria-invalid="true"{{end}}>
+        {{with .Form.Err "password_confirm"}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Create account</button>
+</form>
+{{if .GoogleSignup}}
+<p class="auth-or muted">or</p>
+<form method="post" action="/auth/google" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="intent" value="login">
+    <input type="hidden" name="next" value="/">
+    <input type="hidden" name="timezone" value="" data-timezone>
+    <button type="submit" class="btn btn-block">{{template "icon-google"}}<span>Sign up with Google</span></button>
+</form>
+{{end}}
+<p class="muted auth-alt">Already registered? <a href="/login">Sign in</a></p>
+{{end}}

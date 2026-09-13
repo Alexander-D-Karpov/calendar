@@ -1,0 +1,79 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<header>
+    <h1>API tokens</h1>
+    <p class="muted">Tokens authenticate API requests with <code>Authorization: Bearer &lt;token&gt;</code>. A token is shown once, right after it is created. See the <a href="/api/docs/">API documentation</a>.</p>
+</header>
+
+<section class="card">
+    <h2>New token</h2>
+    {{if .Data.Fresh}}
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    <form method="post" action="/settings/tokens" class="form">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <div class="field">
+            <label for="token-name">Name</label>
+            <input id="token-name" name="name" type="text" maxlength="100" required value="{{.Form.Get "name"}}"{{if .Form.Err "name"}} aria-invalid="true"{{end}}>
+            {{with .Form.Err "name"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+        <fieldset class="field">
+            <legend>Scopes</legend>
+            <div class="scope-grid">
+                {{range .Data.Scopes}}
+                <label class="check"><input type="checkbox" name="scopes" value="{{.}}"{{if $.Form.Has "scopes" .}} checked{{end}}> <code>{{.}}</code></label>
+                {{end}}
+            </div>
+            {{with .Form.Err "scopes"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">A write scope includes read access to the same resource.</p>{{end}}
+        </fieldset>
+        <div class="field">
+            <label for="token-expires">Expires</label>
+            <select id="token-expires" name="expires">
+                {{range .Data.Expiry}}<option value="{{.Value}}"{{if eq ($.Form.Get "expires") .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+            </select>
+            {{with .Form.Err "expires_at"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+        <div><button type="submit" class="btn btn-primary">Create token</button></div>
+    </form>
+    {{else}}
+    <p class="muted">Creating a token needs a recent sign-in.</p>
+    <a class="btn btn-primary" href="/reauth?next=/settings/tokens">Confirm password</a>
+    {{end}}
+</section>
+
+<section>
+    <h2>Existing tokens</h2>
+    {{if .Data.Tokens}}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+            <tr><th>Name</th><th>Scopes</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr>
+            </thead>
+            <tbody>
+            {{range .Data.Tokens}}
+            <tr>
+                <td>{{.Name}}<div class="muted mono small">cal_{{.Prefix}}_…</div></td>
+                <td>{{range .Scopes}}<code class="scope">{{.}}</code> {{end}}</td>
+                <td>{{$.Time .CreatedAt}}</td>
+                <td>{{with .LastUsedAt}}{{$.Time .}}{{else}}<span class="muted">never</span>{{end}}</td>
+                <td>{{with .ExpiresAt}}{{$.Time .}}{{else}}<span class="muted">never</span>{{end}}</td>
+                <td class="actions">
+                    {{if .RevokedAt}}<span class="badge badge-muted">revoked</span>
+                    {{else if not (.Active $.Data.Now)}}<span class="badge badge-muted">expired</span>
+                    {{else}}
+                    <form method="post" action="/settings/tokens/{{.ID}}/revoke">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                        <button type="submit" class="btn btn-small btn-danger">Revoke</button>
+                    </form>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <p class="muted">No tokens yet.</p>
+    {{end}}
+</section>
+{{end}}

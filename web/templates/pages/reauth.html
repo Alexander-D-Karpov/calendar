@@ -1,0 +1,31 @@
+{{template "base" .}}
+{{define "main"}}{{template "auth-main" .}}{{end}}
+{{define "content"}}
+<h1>Confirm it is you</h1>
+<p class="muted">This action needs a recent sign-in.</p>
+{{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+{{if .Data.Password}}
+<form method="post" action="/reauth" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="next" value="{{.Form.Get "next"}}">
+    <input type="hidden" name="username" value="{{.User.Email}}" autocomplete="username">
+    <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Continue</button>
+</form>
+{{end}}
+{{if .Data.Google}}
+{{if .Data.Password}}<p class="auth-or muted">or</p>{{end}}
+<form method="post" action="/auth/google" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="intent" value="reauth">
+    <input type="hidden" name="next" value="{{.Form.Get "next"}}">
+    <button type="submit" class="btn btn-block">{{template "icon-google"}}<span>Continue with Google</span></button>
+</form>
+{{end}}
+{{if not (or .Data.Password .Data.Google)}}
+<p>This account has no sign-in method to confirm with. Set a password with <code>calendar user set-password</code>.</p>
+{{end}}
+{{end}}

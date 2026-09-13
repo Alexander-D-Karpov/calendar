@@ -1,0 +1,1 @@
+ALTER TABLE share_links ADD COLUMN show_sleep boolean NOT NULL DEFAULT true;

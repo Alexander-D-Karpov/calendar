@@ -1,0 +1,75 @@
+{{template "base" .}}
+{{define "head-extra"}}
+<link rel="stylesheet" href="{{asset "css/calendar.css"}}">
+<link rel="stylesheet" href="{{asset "css/todos.css"}}">
+<link rel="stylesheet" href="{{colors .Data.Colors}}">
+{{end}}
+{{define "content"}}
+<article class="event-detail todo-detail hex-{{.Data.Hex}}{{if .Data.Todo.Done}} done{{end}}">
+    <p><a href="{{.Data.Back}}">Back to {{.Data.List.Name}}</a>{{with .Data.Parent}} · Subtask of <a href="/todos/{{.ID}}">{{.Title}}</a>{{end}}</p>
+    <div class="todo-heading">
+        <form method="post" action="{{.Data.Self}}/toggle" class="tick-form">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="back" value="{{.Data.Self}}">
+            <button type="submit" class="tick" aria-pressed="{{.Data.Todo.Done}}" aria-label="{{if .Data.Todo.Done}}Reopen{{else}}Complete{{end}}"></button>
+        </form>
+        <h1 class="todo-title">{{.Data.Todo.Title}}</h1>
+    </div>
+    <dl class="meta">
+        {{with .Data.Due}}<dt>Due</dt><dd{{if $.Data.Overdue}} class="overdue"{{end}}>{{.}}</dd>{{end}}
+        {{with .Data.Todo.RRule}}<dt>Repeats</dt><dd><code>{{.}}</code></dd>{{end}}
+        {{with .Data.Priority}}<dt>Priority</dt><dd>{{.}}</dd>{{end}}
+        {{with .Data.Reminders}}<dt>Reminders</dt><dd>{{.}}</dd>{{end}}
+        <dt>Calendar</dt><dd>{{if .Data.Todo.ShowOnCalendar}}Shown{{else}}Hidden{{end}}</dd>
+        {{with .Data.Todo.CompletedAt}}<dt>Completed</dt><dd>{{$.Time .}}</dd>{{end}}
+    </dl>
+    {{with .Data.Todo.Body}}<div class="prose">{{markdown .}}</div>{{end}}
+    <section class="todo-section">
+        <h2>Checklist{{with .Data.Progress}} <span class="muted">{{.}}</span>{{end}}</h2>
+        {{with .Data.Todo.Checks}}
+        <ul class="check-list">
+            {{range .}}
+            <li class="check-item{{if .Done}} done{{end}}">
+                <form method="post" action="{{$.Data.Self}}/checks/{{.ID}}/toggle" class="tick-form">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                    <button type="submit" class="tick" aria-pressed="{{.Done}}" aria-label="{{if .Done}}Uncheck{{else}}Check{{end}}: {{.Text}}"></button>
+                </form>
+                <span class="check-text">{{.Text}}</span>
+                <form method="post" action="{{$.Data.Self}}/checks/{{.ID}}/delete" class="tick-form">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                    <button type="submit" class="btn-link small">Remove</button>
+                </form>
+            </li>
+            {{end}}
+        </ul>
+        {{end}}
+        <form method="post" action="{{.Data.Self}}/checks" class="quick-form">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input name="text" type="text" maxlength="500" required placeholder="Add an item" aria-label="Checklist item">
+            <button type="submit" class="btn btn-small">Add</button>
+        </form>
+    </section>
+    {{if not .Data.Parent}}
+    <section class="todo-section">
+        <h2>Subtasks</h2>
+        {{with .Data.Subtasks}}<ul class="todo-list">{{range .}}{{template "todo_item" .}}{{end}}</ul>{{end}}
+        <form method="post" action="/todos" class="quick-form">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="parent_id" value="{{.Data.Todo.ID}}">
+            <input type="hidden" name="back" value="{{.Data.Self}}">
+            <input name="title" type="text" maxlength="1000" required placeholder="Add a subtask" aria-label="Subtask title">
+            <button type="submit" class="btn btn-small">Add</button>
+        </form>
+    </section>
+    {{end}}
+    <div class="event-actions">
+        <a class="btn btn-primary" href="{{.Data.Self}}/edit" data-dialog>Edit</a>
+        <form method="post" action="{{.Data.Self}}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="etag" value="{{.Data.Todo.ETag}}">
+            <input type="hidden" name="back" value="{{.Data.Back}}">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+</article>
+{{end}}

@@ -1,0 +1,72 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Security</h1>
+<section class="card">
+    <h2>Password</h2>
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    {{if or .Data.HasPassword .Data.Fresh}}
+    <form method="post" action="/settings/security/password" class="form">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <input type="hidden" name="username" value="{{.User.Email}}" autocomplete="username">
+        {{if .Data.HasPassword}}
+        <div class="field">
+            <label for="sec-current">Current password</label>
+            <input id="sec-current" name="current_password" type="password" autocomplete="current-password" required{{if .Form.Err "current_password"}} aria-invalid="true"{{end}}>
+            {{with .Form.Err "current_password"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+        {{end}}
+        <div class="row">
+            <div class="field">
+                <label for="sec-new">New password</label>
+                <input id="sec-new" name="password" type="password" autocomplete="new-password" required minlength="{{.Data.MinPassword}}"{{if .Form.Err "password"}} aria-invalid="true"{{end}}>
+                {{with .Form.Err "password"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">At least {{.Data.MinPassword}} characters.</p>{{end}}
+            </div>
+            <div class="field">
+                <label for="sec-confirm">Repeat password</label>
+                <input id="sec-confirm" name="password_confirm" type="password" autocomplete="new-password" required{{if .Form.Err "password_confirm"}} aria-invalid="true"{{end}}>
+                {{with .Form.Err "password_confirm"}}<p class="field-error">{{.}}</p>{{end}}
+            </div>
+        </div>
+        <div><button type="submit" class="btn btn-primary">{{if .Data.HasPassword}}Change password{{else}}Set password{{end}}</button></div>
+    </form>
+    {{else}}
+    <p class="muted">This account signs in with Google only. Setting a password needs a recent sign-in.</p>
+    <a class="btn btn-primary" href="/reauth?next=/settings/security">Confirm it is you</a>
+    {{end}}
+</section>
+{{if and $.SMTPEnabled (not .User.Verified)}}
+<section class="card">
+    <h2>Email</h2>
+    <p>Your email address is not confirmed, so you cannot sign in with your password.</p>
+    <form method="post" action="/verify/resend">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button type="submit" class="btn btn-primary">Send a new link</button>
+    </form>
+</section>
+{{end}}
+{{if .Data.GoogleOn}}
+<section class="card">
+    <h2>Google</h2>
+    {{with .Data.Google}}
+    <p>Linked to <strong>{{.Email}}</strong> since {{$.Time .LinkedAt}}.</p>
+    {{if $.Data.HasPassword}}
+    <form method="post" action="/settings/security/google/unlink" data-confirm="Unlink {{.Email}}? You will sign in with your password only.">
+        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        <button type="submit" class="btn btn-danger">Unlink</button>
+    </form>
+    {{else}}
+    <p class="hint">Set a password before unlinking. Google is your only way to sign in.</p>
+    {{end}}
+    {{else}}
+    <p class="muted">Link a Google account to sign in with it.</p>
+    <form method="post" action="/auth/google">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <input type="hidden" name="intent" value="link">
+        <input type="hidden" name="next" value="/settings/security">
+        <button type="submit" class="btn">{{template "icon-google"}}<span>Link Google account</span></button>
+    </form>
+    {{end}}
+</section>
+{{end}}
+{{end}}

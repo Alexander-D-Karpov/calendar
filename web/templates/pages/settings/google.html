@@ -1,0 +1,124 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<header class="section-head">
+    <h1>Google</h1>
+    {{with .Data.Account}}{{if .Active}}
+    <form method="post" action="/settings/google/run">
+        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        <button type="submit" class="btn">Sync now</button>
+    </form>
+    {{end}}{{end}}
+</header>
+{{with .Data.Account}}
+{{if .Active}}
+<p class="muted">Connected as <strong>{{.Email}}</strong>. Changes on either side sync within a few minutes, and right away when Google can notify this server.</p>
+{{else}}
+<p class="form-error" role="alert">Google access was lost{{with .LastError}}: {{.}}{{end}}. Sync is paused until you reconnect.</p>
+{{template "google_grant" $}}
+{{end}}
+{{else}}
+<section class="card">
+    <p>Connect Google to sync calendars and task lists both ways. You choose which ones sync and where they go.</p>
+    {{template "google_grant" .}}
+</section>
+{{end}}
+{{with .Data.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+{{if .Data.Rows}}
+<form method="post" action="/settings/google" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="rows" value="{{.Form.Get "rows"}}">
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    {{with .Form.Err "target"}}<p class="field-error">{{.}}</p>{{end}}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+            <tr><th>Google</th><th>Sync to</th><th>Direction</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+            {{range .Data.Rows}}
+            <tr>
+                <td>
+                    {{.Name}}
+                    <div class="muted small">{{.Kind}}{{if .ReadOnly}} · read only{{end}}{{if .Missing}} · not found on Google{{end}}</div>
+                    <input type="hidden" name="{{.Key "entity"}}" value="{{.Entity}}">
+                    <input type="hidden" name="{{.Key "remote"}}" value="{{.RemoteID}}">
+                </td>
+                <td>
+                    {{$cur := $.Form.Get (.Key "target")}}
+                    <select name="{{.Key "target"}}" aria-label="Sync {{.Name}} to">
+                    {{range .Targets}}<option value="{{.Value}}"{{if eq $cur .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+                    </select>
+                </td>
+                <td>
+                    {{if .ReadOnly}}
+                    <input type="hidden" name="{{.Key "dir"}}" value="pull">From Google
+                    {{else}}
+                    {{$dir := $.Form.Get (.Key "dir")}}
+                    <select name="{{.Key "dir"}}" aria-label="Direction for {{.Name}}">
+                    {{range $.Data.Directions}}<option value="{{.Value}}"{{if eq $dir .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+                    </select>
+                    {{end}}
+                </td>
+                <td class="small">
+                    {{if .Bound}}
+                    {{with .LastSynced}}Synced {{$.Time .}}{{else}}Waiting for the first sync{{end}}{{if .Pending}} · {{.Pending}} to send{{end}}{{if .Watching}} · live{{end}}
+                    {{with .Error}}<div class="field-error">{{.}}</div>{{end}}
+                    {{else}}<span class="muted">Not synced</span>{{end}}
+                </td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+    <p class="hint">Choosing an existing calendar or list also sends its current entries to Google. Todo times and durations stay here, Google Tasks keeps only the date. Checklists are stored in the task notes.</p>
+    <div class="form-actions"><button type="submit" class="btn btn-primary">Save</button></div>
+</form>
+{{end}}
+{{with .Data.Account}}
+<section class="card">
+    <h2>Disconnect</h2>
+    {{if $.Data.Fresh}}
+    <form method="post" action="/settings/google/disconnect" class="form" data-confirm="Disconnect Google? Sync stops and access is revoked.">
+        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+        <div class="checks-row" role="radiogroup" aria-label="Synced entries">
+            <label class="check"><input type="radio" name="keep" value="1" checked> Keep synced entries as local copies</label>
+            <label class="check"><input type="radio" name="keep" value="0"> Delete synced calendars and lists</label>
+        </div>
+        <p class="hint">The default calendar and list are always kept.</p>
+        <div><button type="submit" class="btn btn-danger">Disconnect</button></div>
+    </form>
+    {{else}}
+    <p class="muted">Disconnecting needs a recent sign-in.</p>
+    <a class="btn" href="/reauth?next=/settings/google">Confirm it is you</a>
+    {{end}}
+</section>
+{{end}}
+{{end}}
+{{define "google_grant"}}
+<form method="post" action="/auth/google">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="intent" value="grant">
+    <input type="hidden" name="next" value="/settings/google">
+    <button type="submit" class="btn btn-primary">{{template "icon-google"}}<span>{{if .Data.Account}}Reconnect Google{{else}}Connect Google Calendar and Tasks{{end}}</span></button>
+</form>
+{{with .Data.Conflicts}}
+<details class="card">
+    <summary>Recent conflicts ({{len .}})</summary>
+    <p class="muted">Both sides changed the same entry, so the newer one won. Nothing is lost: the losing version is kept here.</p>
+    <table class="table">
+        <thead><tr><th>What</th><th>Entry</th><th>Kept</th><th>When</th></tr></thead>
+        <tbody>
+        {{range .}}
+        <tr>
+            <td>{{.Entity}}</td>
+            <td class="mono">{{.LocalID}}</td>
+            <td>{{if eq .Winner "local"}}This calendar{{else}}Google{{end}}</td>
+            <td>{{$.Time .CreatedAt}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+</details>
+{{end}}
+{{end}}

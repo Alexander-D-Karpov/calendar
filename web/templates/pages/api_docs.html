@@ -1,0 +1,25 @@
+{{template "base" .}}
+{{define "head-extra"}}
+{{if .Data.Vendored}}<link rel="stylesheet" href="{{asset "vendor/swagger-ui/swagger-ui.css"}}">{{end}}
+<link rel="stylesheet" href="{{asset "css/api-docs.css"}}">
+{{end}}
+{{define "main"}}
+<main class="main main-wide">
+    <header class="section-head">
+        <h1>API documentation</h1>
+        <p class="muted"><a href="/api/openapi.yaml">openapi.yaml</a> · <a href="/api/openapi.json">openapi.json</a>{{if .User}} · <a href="/settings/tokens">API tokens</a>{{end}}</p>
+    </header>
+    {{if .User}}
+    <p class="hint">You are signed in, so Try it out uses your session. To test a token instead, press Authorize and paste it.</p>
+    {{else}}
+    <p class="hint">Press Authorize and paste an API token, or <a href="/login?next=/api/docs/">sign in</a> to try requests with your session.</p>
+    {{end}}
+    {{if .Data.Vendored}}
+    <div id="swagger-ui" class="api-docs" data-spec="/api/openapi.json"></div>
+    <script src="{{asset "vendor/swagger-ui/swagger-ui-bundle.js"}}" defer></script>
+    <script src="{{asset "js/api-docs.js"}}" defer></script>
+    {{else}}
+    <p class="form-error">Swagger UI is not bundled in this build. Run <code>make vendor-swagger</code>, or read the raw specification linked above.</p>
+    {{end}}
+</main>
+{{end}}

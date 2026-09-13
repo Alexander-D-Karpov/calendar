@@ -1,0 +1,18 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Token created</h1>
+<p>Copy the token now. It will not be shown again.</p>
+<div class="token-box">
+    <input id="new-token" class="mono" type="text" readonly value="{{.Data.Token}}" aria-label="API token">
+    <button type="button" class="btn" data-copy="new-token" hidden>Copy</button>
+</div>
+<dl class="meta">
+    <dt>Name</dt><dd>{{.Data.Info.Name}}</dd>
+    <dt>Scopes</dt><dd>{{range .Data.Info.Scopes}}<code class="scope">{{.}}</code> {{end}}</dd>
+    <dt>Expires</dt><dd>{{with .Data.Info.ExpiresAt}}{{$.Time .}}{{else}}never{{end}}</dd>
+</dl>
+<p class="muted">Try it with a token that has <code>account:read</code>:</p>
+<pre class="code">curl -H "Authorization: Bearer $TOKEN" {{.Data.Origin}}/api/v1/me</pre>
+<p><a href="/settings/tokens">Back to tokens</a></p>
+{{end}}

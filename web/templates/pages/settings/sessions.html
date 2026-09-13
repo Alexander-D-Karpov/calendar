@@ -1,0 +1,38 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<header class="section-head">
+    <h1>Sessions</h1>
+    {{if gt (len .Data) 1}}
+    <form method="post" action="/settings/sessions/revoke-others">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button type="submit" class="btn btn-danger">Sign out other sessions</button>
+    </form>
+    {{end}}
+</header>
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+        <tr><th>Device</th><th>IP address</th><th>Signed in</th><th>Last active</th><th></th></tr>
+        </thead>
+        <tbody>
+        {{range .Data}}
+        <tr>
+            <td>{{ua .UserAgent}}{{if .Current}} <span class="badge">This device</span>{{end}}</td>
+            <td class="mono">{{if .IP.IsValid}}{{.IP}}{{else}}<span class="muted">unknown</span>{{end}}</td>
+            <td>{{$.Time .CreatedAt}}</td>
+            <td>{{$.Time .LastSeenAt}}</td>
+            <td class="actions">
+                {{if not .Current}}
+                <form method="post" action="/settings/sessions/{{.ID}}/revoke">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                    <button type="submit" class="btn btn-small">Sign out</button>
+                </form>
+                {{end}}
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

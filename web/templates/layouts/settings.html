@@ -1,0 +1,22 @@
+{{define "settings-main"}}
+<main class="settings">
+    <nav class="settings-nav" aria-label="Settings">
+        <a href="/settings/profile"{{if eq .Nav "settings/profile"}} aria-current="page"{{end}}>Profile</a>
+        <a href="/settings/security"{{if eq .Nav "settings/security"}} aria-current="page"{{end}}>Security</a>
+        <a href="/settings/calendars"{{if eq .Nav "settings/calendars"}} aria-current="page"{{end}}>Calendars</a>
+        <a href="/settings/subscriptions"{{if eq .Nav "settings/subscriptions"}} aria-current="page"{{end}}>Subscriptions</a>
+        {{if .GoogleSync}}<a href="/settings/google"{{if eq .Nav "settings/google"}} aria-current="page"{{end}}>Google</a>{{end}}
+        <a href="/settings/import"{{if eq .Nav "settings/import"}} aria-current="page"{{end}}>Import</a>
+        <a href="/settings/export"{{if eq .Nav "settings/export"}} aria-current="page"{{end}}>Export</a>
+        <a href="/settings/duplicates"{{if eq .Nav "settings/duplicates"}} aria-current="page"{{end}}>Duplicates</a>
+        <a href="/settings/trash"{{if eq .Nav "settings/trash"}} aria-current="page"{{end}}>Trash</a>
+        <a href="/settings/notifications"{{if eq .Nav "settings/notifications"}} aria-current="page"{{end}}>Notifications</a>
+        <a href="/settings/sessions"{{if eq .Nav "settings/sessions"}} aria-current="page"{{end}}>Sessions</a>
+        <a href="/settings/tokens"{{if eq .Nav "settings/tokens"}} aria-current="page"{{end}}>API tokens</a>
+        <a href="/settings/shares"{{if eq .Nav "settings/shares"}} aria-current="page"{{end}}>Share links</a>
+    </nav>
+    <section class="settings-body" data-findable>
+        {{template "content" .}}
+    </section>
+</main>
+{{end}}

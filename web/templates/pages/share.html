@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="{{.Theme}}">
+<head>
+{{template "head" .}}
+</head>
+<body>
+<header class="site-header">
+    <span class="brand">{{template "icon-brand"}}<span>{{.Data.Name}}</span></span>
+    <span class="bar-item">{{.Data.Kind}} · {{.Data.Title}}</span>
+    <span class="bar-item site-user">{{.Data.TZ}}</span>
+</header>
+<main class="cal share"{{if .Data.ViewerTZ}} data-viewer-tz{{end}}>
+    {{template "share_view" .}}
+</main>
+{{template "footer" .}}
+</body>
+</html>
+{{define "head-extra"}}
+<meta name="robots" content="noindex, nofollow">
+{{with .Data.OGImage}}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{$.Footer.AppName}}">
+<meta property="og:title" content="{{$.Data.Name}}">
+<meta property="og:description" content="{{$.Data.OGDesc}}">
+<meta property="og:image" content="{{.}}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+{{end}}
+<link rel="stylesheet" href="{{asset "css/slots.css"}}">
+<link rel="stylesheet" href="{{asset "css/calendar.css"}}">
+<script src="{{asset "js/calendar.js"}}" defer></script>
+{{end}}
+{{define "share_view"}}
+<section class="cal-view" data-findable aria-label="{{.Data.Title}}" data-live="{{.Data.Live}}" data-seq="{{.Data.Seq}}">
+    {{with .Data.Colors}}<link rel="stylesheet" href="{{colors .}}">{{end}}
+    {{template "period_views" .Data}}
+</section>
+{{end}}

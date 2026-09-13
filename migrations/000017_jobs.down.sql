@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS jobs;
+DROP FUNCTION IF EXISTS jobs_notify();

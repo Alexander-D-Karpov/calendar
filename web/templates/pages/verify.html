@@ -1,0 +1,15 @@
+{{template "base" .}}
+{{define "main"}}{{template "auth-main" .}}{{end}}
+{{define "content"}}
+<h1>Confirm your email</h1>
+<p class="form-error" role="alert">{{.Data.Message}}</p>
+{{if .Data.Resend}}
+<form method="post" action="/verify/resend" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <button type="submit" class="btn btn-primary btn-block">Send a new link</button>
+</form>
+{{else}}
+<p class="muted">Sign in and we can send you a new link.</p>
+{{end}}
+<p class="muted auth-alt"><a href="/login">Back to sign in</a></p>
+{{end}}

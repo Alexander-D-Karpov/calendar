@@ -1,0 +1,112 @@
+version: "2"
+linters:
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - misspell
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - usestdlibvars
+  settings:
+    errcheck:
+      # Releasing a handle has no recovery path: by the time the deferred Close
+      # runs the response is read, and a terminal write that fails cannot be
+      # reported to that same terminal.
+      exclude-functions:
+        - (io.Closer).Close
+        - (net.Conn).Close
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - io.WriteString
+    staticcheck:
+      # SA* finds bugs and gates CI. QF*/ST* propose stylistic rewrites that
+      # disagree with the house style, so they are off rather than worked around.
+      checks:
+        - all
+        - -QF1001
+        - -QF1002
+        - -QF1011
+        - -ST1000
+        - -ST1011
+        - -ST1023
+  exclusions:
+    rules:
+      # Tests reach for the short form on purpose: a bare request, a plain
+      # cookie, a file read from testdata. None of it serves user traffic.
+      - path: _test\.go
+        linters:
+          - bodyclose
+          - errcheck
+          - gosec
+          - noctx
+      # Build-time generators that fetch a pinned artefact and exit. Their
+      # output is committed source, so it is deliberately group readable.
+      - path: ^internal/tools/
+        linters:
+          - errcheck
+          - gosec
+          - noctx
+      # Duplicates errcheck, which is configured above.
+      - linters: [gosec]
+        text: "G104"
+      # Every flagged conversion was traced to its source and bounded by a
+      # validation check, a domain constant or a fixed-size buffer. The one real
+      # case this found, an unclamped iCal SEQUENCE, is now clamped in
+      # internal/ical/decode.go against domain.MaxSequence.
+      - linters: [gosec]
+        text: "G115"
+      # Fires on identifiers such as emailTokensTable, not on literal secrets.
+      - linters: [gosec]
+        text: "G101"
+      # These four set HttpOnly and SameSite and take Secure from
+      # SECURITY_COOKIE_SECURE, which is true in production. gosec only accepts
+      # a literal true.
+      - path: ^internal/(auth/session|web/theme|web/flash|web/sealed)\.go$
+        linters: [gosec]
+        text: "G124"
+      # Rendered markdown is run through a bluemonday allowlist, and the
+      # goldmark renderer is not configured with WithUnsafe.
+      - path: ^internal/markdown/
+        linters: [gosec]
+        text: "G203"
+      # Redirect and Finish run every target through SafeNext, and the share
+      # image URL is built from the configured origin, never from the request.
+      - path: ^internal/web/(errors\.go|shares/og\.go)$
+        linters: [gosec]
+        text: "G710"
+      # Taint reaching w.Write, where the bytes are an encoded PNG or an
+      # already redacted view served with nosniff and a CSP.
+      - path: ^internal/web/shares/
+        linters: [gosec]
+        text: "G705"
+      # httpx.BodyLimit wraps the whole mux before any handler runs, and the
+      # in-memory argument is 1MB with the rest spilled to disk.
+      - path: ^internal/web/upload\.go$
+        linters: [gosec]
+        text: "G120"
+      # Jitter for job retry backoff. Every security-relevant value in the
+      # repo comes from crypto/rand.
+      - path: ^internal/jobs/worker\.go$
+        linters: [gosec]
+        text: "G404"
+      # The ecdsa key is built only after crypto/ecdh has validated the pair,
+      # which is the failure the deprecation warns about. Worth revisiting when
+      # the VAPID signer moves to PublicKey.Bytes.
+      - path: ^internal/push/vapid\.go$
+        linters: [staticcheck]
+        text: "SA1019"
+      - path: ^internal/observe/sentry\.go$
+        linters: [staticcheck]
+        text: "SA1019"
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/Alexander-D-Karpov/calendar

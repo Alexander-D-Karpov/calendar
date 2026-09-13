@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.27.0"
+  # Pinned so CI and a developer's machine disagree about the code, never about
+  # the tool version.
+  GOLANGCI_LINT_VERSION: "v2.13.2"
+  SQLC_VERSION: "v1.31.1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      # .golangci.yml is config version 2, which needs action v7 or newer.
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: make vet
+      - run: make test
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: calendar
+          POSTGRES_PASSWORD: calendar
+          POSTGRES_DB: calendar_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U calendar"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - run: make test-integration
+        env:
+          TEST_DATABASE_URL: postgres://calendar:calendar@localhost:5432/calendar_test?sslmode=disable
+
+  # Kept apart from `test` so a stale generator cannot take the test signal down
+  # with it. Each step regenerates a committed artefact and fails on any diff.
+  generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: slots.css matches the generator
+        run: |
+          make css
+          git diff --exit-code web/static/css/slots.css
+      - name: sqlc output matches migrations and queries
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@${{ env.SQLC_VERSION }}
+          make sqlc
+          git diff --exit-code internal/db/sqlc
+      - name: Swagger bundle matches its pinned version
+        run: |
+          test -f web/static/vendor/swagger-ui/VERSION
+          make vendor-swagger
+          git diff --exit-code web/static/vendor/swagger-ui
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make docker

@@ -1,0 +1,28 @@
+{{define "grid"}}
+<div class="grid cols-{{len .Columns}}" data-today="{{.Today}}" data-tz="{{.TZ}}" data-scroll="{{.ScrollHour}}">
+    <div class="grid-head">
+        <div class="grid-corner"></div>
+        {{range .Columns}}<a class="grid-day{{if .Today}} today{{end}}{{if .Weekend}} weekend{{end}}" href="{{.Href}}"><span>{{.Weekday}}</span> <strong>{{.Num}}</strong></a>{{end}}
+    </div>
+    <div class="grid-allday">
+        <div class="grid-corner">All day</div>
+        <div class="allday-lanes">
+            {{range .Bars}}{{template "bar" .}}{{end}}
+            {{range .More}}<a class="more {{.Class}}" href="{{.Href}}">+{{.Count}} more</a>{{end}}
+        </div>
+    </div>
+    <div class="grid-scroll">
+        <div class="grid-body">
+            <div class="grid-hours" aria-hidden="true">{{range .Hours}}<div class="hour gr-{{.Row}} gs-12">{{.Label}}</div>{{end}}</div>
+            {{range .Columns}}
+            <div class="grid-col{{if .Today}} today{{end}}{{if .Weekend}} weekend{{end}}" data-date="{{.Date.Format "2006-01-02"}}">
+            {{range .Slots}}<a class="slot gr-{{.Row}} gs-12"{{with .Href}} href="{{.}}" data-dialog{{end}} aria-label="New event at {{.Label}}"></a>{{end}}
+            {{range .Sleep}}<div class="sleep {{.Class}}" aria-hidden="true"><span>Sleep</span></div>{{end}}
+            {{range .Blocks}}{{template "event_block" .}}{{end}}
+            {{if .NowRow}}<div class="now gr-{{.NowRow}}" data-now aria-hidden="true"></div>{{end}}
+        </div>
+        {{end}}
+    </div>
+</div>
+</div>
+{{end}}

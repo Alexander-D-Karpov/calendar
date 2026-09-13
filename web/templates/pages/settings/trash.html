@@ -1,0 +1,42 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Trash</h1>
+<p class="muted">Deleted events and todos are kept here for a while, then removed for good.</p>
+{{with .Data.Items}}
+<div class="table-wrap">
+    <table class="table">
+        <thead>
+        <tr><th>Title</th><th>When</th><th>From</th><th>Deleted</th><th></th></tr>
+        </thead>
+        <tbody>
+        {{range .}}
+        <tr>
+            <td>
+                {{with .Title}}{{.}}{{else}}<span class="muted">(no title)</span>{{end}}
+                {{if .Children}}<div class="muted small">{{if eq .Entity "event"}}with {{.Children}} changed occurrences{{else}}with {{.Children}} subtasks{{end}}</div>{{end}}
+            </td>
+            <td class="mono small">{{.When}}</td>
+            <td>{{.Where}}</td>
+            <td>{{$.Time .DeletedAt}}</td>
+            <td class="actions">
+                <div class="actions-row">
+                    <form method="post" action="/settings/trash/{{.Entity}}/{{.ID}}/restore">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                        <button type="submit" class="btn btn-small">Restore</button>
+                    </form>
+                    <form method="post" action="/settings/trash/{{.Entity}}/{{.ID}}/delete" data-confirm="Delete this for good?">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRF}}">
+                        <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<p class="muted">The trash is empty.</p>
+{{end}}
+{{end}}

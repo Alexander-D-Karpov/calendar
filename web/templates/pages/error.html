@@ -1,0 +1,9 @@
+{{template "base" .}}
+{{define "content"}}
+<div class="error-page">
+    <p class="error-code">{{.Data.Status}}</p>
+    <h1>{{.Data.Title}}</h1>
+    {{with .Data.Detail}}<p class="muted">{{.}}</p>{{end}}
+    <p><a href="/">Go to the start page</a></p>
+</div>
+{{end}}

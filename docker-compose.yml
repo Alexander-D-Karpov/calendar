@@ -1,0 +1,71 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: calendar
+      # Postgres is not published to the host, so this only guards the compose
+      # network. Still set POSTGRES_PASSWORD in .env for anything real.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-calendar}
+      POSTGRES_DB: calendar
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calendar"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-}
+        DATE: ${DATE:-}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://calendar:${POSTGRES_PASSWORD:-calendar}@db:5432/calendar?sslmode=disable
+      HTTP_TRUSTED_PROXIES: 127.0.0.1/32,::1/128,172.16.0.0/12
+      METRICS_ADDR: ":9091"
+      WORKER_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9091:9091"
+    volumes:
+      - appdata:/data
+    healthcheck:
+      test: ["CMD", "/calendar", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # The web process serves requests; this one drains the job queue. Running both
+  # in one container works, but then a slow sync pull competes with page loads.
+  worker:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-}
+        DATE: ${DATE:-}
+    command: ["worker"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://calendar:${POSTGRES_PASSWORD:-calendar}@db:5432/calendar?sslmode=disable
+      WORKER_ENABLED: "true"
+      METRICS_ADDR: ":9092"
+    volumes:
+      - appdata:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  appdata:

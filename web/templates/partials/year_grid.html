@@ -1,0 +1,13 @@
+{{define "year_grid"}}
+<div class="year">
+    {{range .Months}}
+    <section class="mini">
+        <h2><a{{with .Href}} href="{{.}}"{{end}}>{{.Title}}</a></h2>
+        <div class="mini-grid">
+            {{range .Weekdays}}<span class="mini-wd">{{.}}</span>{{end}}
+            {{range .Days}}{{if .Outside}}<span class="mini-day outside"></span>{{else}}<a class="mini-day {{.Class}}"{{with .Href}} href="{{.}}"{{end}} title="{{.Title}}">{{.Num}}</a>{{end}}{{end}}
+        </div>
+    </section>
+    {{end}}
+</div>
+{{end}}

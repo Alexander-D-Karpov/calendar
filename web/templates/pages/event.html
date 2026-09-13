@@ -1,0 +1,58 @@
+{{template "base" .}}
+{{define "head-extra"}}
+<link rel="stylesheet" href="{{asset "css/calendar.css"}}">
+{{with .Data.Colors}}<link rel="stylesheet" href="{{colors .}}">{{end}}
+{{end}}
+{{define "content"}}
+<div class="event-detail">
+    <p><a href="{{.Data.Back}}">Back to calendar</a></p>
+    {{template "event_card" .}}
+</div>
+{{end}}
+{{define "event_card"}}
+<article class="event-card{{with .Data.Hex}} hex-{{.}}{{end}}">
+    <header class="form-head">
+        <h1><span class="swatch"></span>{{with .Data.Event.Title}}{{.}}{{else}}(no title){{end}}</h1>
+        {{if .Fragment}}<button type="button" class="btn-link" data-close>Close</button>{{end}}
+    </header>
+    <dl class="meta">
+        <dt>When</dt><dd>{{.Data.When}}</dd>
+        {{with .Data.RuleText}}<dt>Repeats</dt><dd><code>{{.}}</code></dd>{{end}}
+        <dt>Calendar</dt><dd>{{.Data.Calendar.Name}}</dd>
+        {{with .Data.Event.Location}}<dt>Location</dt><dd>{{.}}</dd>{{end}}
+        {{with .Data.Event.URL}}<dt>Link</dt><dd><a href="{{.}}" rel="noopener noreferrer">{{.}}</a></dd>{{end}}
+        {{with .Data.Reminders}}<dt>Reminders</dt><dd>{{.}}</dd>{{end}}
+        {{if eq .Data.Event.Status "tentative"}}<dt>Status</dt><dd>Tentative</dd>{{end}}
+        {{if eq .Data.Event.Visibility "private"}}<dt>Visibility</dt><dd>Private, never shown on share links</dd>{{end}}
+    </dl>
+    {{with .Data.Event.Body}}<div class="prose">{{markdown .}}</div>{{end}}
+    {{if .Data.Editable}}
+    <div class="event-actions">
+        <a class="btn btn-primary" href="{{.Data.EditHref}}" data-dialog>Edit</a>
+        {{if .Data.Scopes}}
+        <details class="confirm">
+            <summary class="btn btn-danger">Delete</summary>
+            <form method="post" action="/events/{{.Data.Event.ID}}/delete" class="confirm-body">
+                <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+                <input type="hidden" name="etag" value="{{.Data.Event.ETag}}">
+                <input type="hidden" name="back" value="{{.Data.Back}}">
+                {{with .Data.Instance}}<input type="hidden" name="instance" value="{{.}}">{{end}}
+                <p class="muted small">This event repeats. What should be deleted?</p>
+                <div class="checks-row" role="radiogroup" aria-label="What to delete">
+                    {{range $i, $s := .Data.Scopes}}<label class="check"><input type="radio" name="scope" value="{{$s.Value}}"{{if eq $i 0}} checked{{end}}> {{$s.Label}}</label>{{end}}
+                </div>
+                <button type="submit" class="btn btn-danger btn-small">Delete</button>
+            </form>
+        </details>
+        {{else}}
+        <form method="post" action="/events/{{.Data.Event.ID}}/delete" class="inline-form" data-confirm="Delete this event?">
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="etag" value="{{.Data.Event.ETag}}">
+            <input type="hidden" name="back" value="{{.Data.Back}}">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+        {{end}}
+    </div>
+    {{end}}
+</article>
+{{end}}

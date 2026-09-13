@@ -1,0 +1,18 @@
+{{define "calendar_sidebar"}}
+<aside class="cal-sidebar">
+    {{with .Data.Calendars}}
+    <form method="get" action="{{$.Data.Path}}" data-autosubmit>
+        <input type="hidden" name="f" value="1">
+        <h2>Calendars · <a href="/settings/calendars">Manage</a></h2>
+        <ul class="cal-list">
+            {{range .}}
+            <li><label class="check hex-{{.Hex}}"><input type="checkbox" name="cal" value="{{.ID}}"{{if .Selected}} checked{{end}}> <span class="swatch"></span> {{.Name}}</label></li>
+            {{end}}
+            <li><label class="check"><input type="checkbox" name="todos" value="1"{{if $.Data.ShowTodos}} checked{{end}}> <span class="swatch swatch-todo"></span> Todos</label></li>
+        </ul>
+        <button type="submit" class="btn btn-small" data-noscript>Apply</button>
+    </form>
+    {{end}}
+    <p class="muted small">Keys: <kbd>d</kbd> <kbd>3</kbd> <kbd>w</kbd> <kbd>m</kbd> <kbd>y</kbd> <kbd>a</kbd> views, <kbd>t</kbd> today, <kbd>j</kbd> <kbd>k</kbd> next and previous, <kbd>c</kbd> new event.</p>
+</aside>
+{{end}}

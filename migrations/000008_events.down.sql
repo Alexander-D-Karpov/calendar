@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS event_reminders;
+DROP TABLE IF EXISTS events;

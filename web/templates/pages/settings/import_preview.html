@@ -1,0 +1,80 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<header class="section-head">
+    <h1>Review import</h1>
+    <p class="muted">{{with .Data.Import.Filename}}{{.}}{{else}}upload{{end}} · {{.Data.Preview.Source}}</p>
+</header>
+{{if .Data.Done}}
+<p class="flash flash-ok" role="status">This import is finished.</p>
+<dl class="meta">
+    <dt>Added</dt><dd>{{.Data.Stats.New}}</dd>
+    <dt>Updated</dt><dd>{{.Data.Stats.Updated}}</dd>
+    <dt>Skipped</dt><dd>{{.Data.Stats.Skipped}}</dd>
+    <dt>Invalid</dt><dd>{{.Data.Stats.Invalid}}</dd>
+</dl>
+{{with .Data.Import.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+<p><a href="/settings/import">Back to import</a> · <a href="/">Open the calendar</a></p>
+{{else}}
+{{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+<dl class="meta">
+    <dt>New</dt><dd>{{.Data.Preview.Stats.New}}</dd>
+    <dt>Updates existing</dt><dd>{{.Data.Preview.Stats.Updated}}</dd>
+    <dt>Already here</dt><dd>{{.Data.Preview.Stats.Duplicate}}</dd>
+    <dt>Could not be read</dt><dd>{{.Data.Preview.Stats.Invalid}}</dd>
+</dl>
+<p class="hint">Entries that match by UID are updated. Entries with the same title, time and place as one you already have are skipped.</p>
+<form method="post" action="{{.Data.CommitTo}}" class="form">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+            <tr><th>In the file</th><th>Entries</th><th>Import into</th><th></th></tr>
+            </thead>
+            <tbody>
+            {{range .Data.Targets}}
+            <tr>
+                <td>{{with .Name}}{{.}}{{else}}<span class="muted">unnamed</span>{{end}}{{with .Timezone}}<div class="muted small">{{.}}</div>{{end}}</td>
+                <td>{{if eq .Kind "calendar"}}{{.Events}} events{{else}}{{.Todos}} todos{{end}}</td>
+                <td>
+                    {{$cur := $.Form.Get .Key}}
+                    <select name="{{.Key}}" aria-label="Import {{.Name}} into">
+                        {{range .Options}}<option value="{{.Value}}"{{if eq $cur .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+                    </select>
+                </td>
+                <td><label class="check"><input type="checkbox" name="{{.SkipKey}}" value="1"{{if eq ($.Form.Get .SkipKey) "1"}} checked{{end}}> Skip</label></td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Import</button>
+        <a class="btn" href="/settings/import">Cancel</a>
+    </div>
+</form>
+{{with .Data.Preview.Problems}}
+<section>
+    <h2>Could not be read</h2>
+    <ul class="problem-list">
+        {{range .}}<li><span class="muted">{{.Where}}</span> {{.Message}}</li>{{end}}
+    </ul>
+</section>
+{{end}}
+{{with .Data.Preview.Samples}}
+<details class="form-more">
+    <summary>What was found</summary>
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Title</th><th>When</th><th>Action</th></tr></thead>
+            <tbody>
+            {{range .}}
+            <tr><td>{{.Title}}</td><td class="mono small">{{.When}}</td><td>{{.Action}}</td></tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+</details>
+{{end}}
+{{end}}
+{{end}}

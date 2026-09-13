@@ -1,0 +1,12 @@
+{{define "month_grid"}}
+<div class="month">
+    <div class="month-head">{{range .Weekdays}}<div>{{.}}</div>{{end}}</div>
+    {{range .Weeks}}
+    <div class="month-week">
+        {{range .Days}}{{$label := .Label}}<div class="month-day {{.Class}}{{if .Today}} today{{end}}{{if .Outside}} outside{{end}}"><a class="month-num"{{with .Href}} href="{{.}}"{{end}} aria-label="{{.Label}}">{{.Num}}</a>{{with .NewHref}}<a class="month-add" href="{{.}}" data-dialog aria-label="New event on {{$label}}"></a>{{end}}</div>{{end}}
+        {{range .Bars}}{{template "bar" .}}{{end}}
+        {{range .More}}<a class="more {{.Class}}"{{with .Href}} href="{{.}}"{{end}}>+{{.Count}} more</a>{{end}}
+    </div>
+    {{end}}
+</div>
+{{end}}

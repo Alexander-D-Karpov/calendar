@@ -1,0 +1,12 @@
+DROP TRIGGER IF EXISTS todo_checks_search_refresh ON todo_checks;
+DROP TRIGGER IF EXISTS todos_search_update ON todos;
+DROP FUNCTION IF EXISTS todo_checks_search_refresh();
+DROP FUNCTION IF EXISTS todos_search_update();
+DROP FUNCTION IF EXISTS todo_checks_text(uuid);
+DROP INDEX IF EXISTS todos_title_trgm_idx;
+DROP INDEX IF EXISTS todos_search_idx;
+ALTER TABLE todos DROP COLUMN IF EXISTS search;
+DROP INDEX IF EXISTS events_title_trgm_idx;
+DROP INDEX IF EXISTS events_search_idx;
+ALTER TABLE events DROP COLUMN IF EXISTS search;
+DROP FUNCTION IF EXISTS search_document(text, text, text);

@@ -1,0 +1,14 @@
+{{define "base"}}<!doctype html>
+<html lang="en" data-theme="{{.Theme}}">
+<head>
+    {{template "head" .}}
+</head>
+<body>
+{{template "header" .}}
+{{template "flash" .}}
+{{block "main" .}}<main class="main">{{template "content" .}}</main>{{end}}
+{{template "footer" .}}
+{{if .User}}{{template "help" .}}{{end}}
+</body>
+</html>
+{{end}}

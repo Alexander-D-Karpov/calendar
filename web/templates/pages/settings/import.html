@@ -1,0 +1,45 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}
+<h1>Import</h1>
+<section class="card">
+    <p>Upload an .ics file from another calendar, a .csv exported from Google or Outlook, or a .yaml exported from here. Nothing is written until you review what was found.</p>
+    <form method="post" action="/settings/import" class="form" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <div class="field">
+            <label for="im-file">File</label>
+            <input id="im-file" name="file" type="file" accept=".ics,.ical,.csv,.tsv,.yaml,.yml,text/calendar,text/csv" required{{if .Form.Err "file"}} aria-invalid="true"{{end}}>
+            {{with .Form.Err "file"}}<p class="field-error">{{.}}</p>{{else}}<p class="hint">Up to {{.Data.MaxSize}}.</p>{{end}}
+        </div>
+        <div><button type="submit" class="btn btn-primary">Upload</button></div>
+    </form>
+    <p class="hint">To follow a calendar that keeps changing, use <a href="/settings/subscriptions">subscriptions</a> instead.</p>
+</section>
+{{with .Data.History}}
+<section>
+    <h2>Recent imports</h2>
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+            <tr><th>File</th><th>Type</th><th>Uploaded</th><th>Result</th><th></th></tr>
+            </thead>
+            <tbody>
+            {{range .}}
+            <tr>
+                <td>{{with .Filename}}{{.}}{{else}}<span class="muted">upload</span>{{end}}</td>
+                <td class="mono small">{{.Source}}</td>
+                <td>{{$.Time .CreatedAt}}</td>
+                <td>
+                    {{if eq .Status "previewed"}}<span class="badge">awaiting review</span>
+                    {{else if eq .Status "failed"}}<span class="badge badge-muted">failed</span>{{with .Error}}<div class="field-error small">{{.}}</div>{{end}}
+                    {{else}}{{.Counts}}{{end}}
+                </td>
+                <td class="actions"><a class="btn btn-small" href="/settings/import/{{.ID}}">Open</a></td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+</section>
+{{end}}
+{{end}}

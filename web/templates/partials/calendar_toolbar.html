@@ -1,0 +1,32 @@
+{{define "calendar_toolbar"}}
+<header class="cal-toolbar">
+    <div class="cal-group cal-nav">
+        <a class="btn btn-icon" href="{{.Data.PrevHref}}" data-key="k" rel="prev" aria-label="Previous">{{template "icon-prev"}}</a>
+        <a class="btn btn-icon" href="{{.Data.NextHref}}" data-key="j" rel="next" aria-label="Next">{{template "icon-next"}}</a>
+        <a class="btn" href="{{.Data.TodayHref}}" data-key="t">Today</a>
+        <h1 class="cal-title">{{.Data.Title}}</h1>
+    </div>
+    <div class="cal-group cal-tools">
+        <form method="post" action="/events" class="quick-add quick-inline" data-quick>
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="quick" value="1">
+            <input type="hidden" name="back" value="{{.Path}}">
+            <input type="text" name="title" placeholder="Add an event" autocomplete="off" aria-label="Add an event" data-key="c" required>
+            <button type="submit" class="btn btn-primary btn-icon" aria-label="Add">{{template "icon-plus"}}</button>
+        </form>
+        <button type="button" class="btn btn-icon" data-find-open aria-label="Find on this page" title="Find on this page (Ctrl+F)">{{template "icon-search"}}</button>
+        <form method="post" action="/settings/shares/quick" class="inline-form" data-share>
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="view" value="{{.Data.Kind}}">
+            <input type="hidden" name="period" value="{{.Data.PeriodDate}}">
+            {{range .Data.ShareCalendars}}<input type="hidden" name="cal" value="{{.}}">{{end}}
+            {{if .Data.ShowTodos}}<input type="hidden" name="todos" value="1">{{end}}
+            <button type="submit" class="btn btn-icon" aria-label="Share this period" title="Create a share link and copy it">{{template "icon-share"}}</button>
+        </form>
+        <a class="btn btn-icon" href="{{.Data.NewHref}}" data-dialog aria-label="New event with all options" title="New event">{{template "icon-more"}}</a>
+    </div>
+    <nav class="cal-views" aria-label="View">
+        {{range .Data.Views}}<a href="{{.Href}}" data-key="{{.Key}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+    </nav>
+</header>
+{{end}}

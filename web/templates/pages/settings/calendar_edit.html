@@ -1,0 +1,48 @@
+{{template "base" .}}
+{{define "main"}}{{template "settings-main" .}}{{end}}
+{{define "content"}}{{template "calendar_form" .}}{{end}}
+{{define "calendar_form"}}
+<form method="post" action="{{.Data.Action}}" class="form event-form" autocomplete="off">
+    <header class="form-head">
+        <h1>{{.Title}}</h1>
+        {{if .Fragment}}<button type="button" class="btn-link" data-close>Close</button>{{end}}
+    </header>
+    {{with .Form.Error}}<p class="form-error" role="alert">{{.}}</p>{{end}}
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    {{with .Data.ETag}}<input type="hidden" name="etag" value="{{.}}">{{end}}
+    {{with .Data.Back}}<input type="hidden" name="back" value="{{.}}">{{end}}
+    <input class="title-input" name="name" type="text" maxlength="100" required autofocus placeholder="Calendar name" aria-label="Name" value="{{.Form.Get "name"}}"{{if .Form.Err "name"}} aria-invalid="true"{{end}}>
+    {{with .Form.Err "name"}}<p class="field-error">{{.}}</p>{{end}}
+    <div class="when">
+        <input name="color" type="color" aria-label="Color" value="{{.Form.Get "color"}}">
+        <label class="check"><input type="checkbox" name="hidden" value="1"{{if eq (.Form.Get "hidden") "1"}} checked{{end}}> Hidden from calendar views</label>
+    </div>
+    {{with .Form.Err "color"}}<p class="field-error">{{.}}</p>{{end}}
+    <details class="form-more"{{if .Form.Any "timezone" "description" "default_reminders"}} open{{end}}>
+    <summary>More options</summary>
+    <div class="form">
+        <div class="row">
+            <div class="field">
+                <label for="cal-tz">Timezone</label>
+                <input id="cal-tz" name="timezone" type="text" spellcheck="false" placeholder="account timezone" value="{{.Form.Get "timezone"}}"{{if .Form.Err "timezone"}} aria-invalid="true"{{end}}>
+                {{with .Form.Err "timezone"}}<p class="field-error">{{.}}</p>{{end}}
+            </div>
+            <div class="field">
+                <label for="cal-rem">Default reminders, minutes before</label>
+                <input id="cal-rem" name="reminders" type="text" inputmode="numeric" value="{{.Form.Get "reminders"}}"{{if .Form.Err "default_reminders"}} aria-invalid="true"{{end}}>
+                {{with .Form.Err "default_reminders"}}<p class="field-error">{{.}}</p>{{end}}
+            </div>
+        </div>
+        <div class="field">
+            <label for="cal-desc">Description</label>
+            <textarea id="cal-desc" name="description" rows="3" maxlength="2000">{{.Form.Values.Get "description"}}</textarea>
+            {{with .Form.Err "description"}}<p class="field-error">{{.}}</p>{{end}}
+        </div>
+    </div>
+    </details>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn" href="{{.Data.Cancel}}" data-close>Cancel</a>
+    </div>
+</form>
+{{end}}

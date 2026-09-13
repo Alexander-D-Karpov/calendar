@@ -1,0 +1,30 @@
+{{define "footer"}}
+<footer class="site-footer">
+    <div class="footer-info">
+        <span>{{.Footer.AppName}}</span>
+        <span>Version: {{if .Footer.VersionURL}}<a href="{{.Footer.VersionURL}}">{{.Footer.Version}}</a>{{else}}{{.Footer.Version}}{{end}}{{if .Footer.CommitURL}} (<a href="{{.Footer.CommitURL}}">{{.Footer.CommitShort}}</a>{{if .Footer.Modified}}, modified{{end}}){{end}}</span>
+        {{with .Footer.Built}}<span>Built: {{.}}</span>{{end}}
+        <span>Page: {{.PageTime}}</span>
+        <span>Template: {{.TemplateTime}}</span>
+        <span>{{.Footer.GoVersion}}</span>
+    </div>
+    <div class="footer-links">
+        <a class="bar-item" href="/api/docs/">{{template "icon-api"}}<span>API</span></a>
+        <a class="bar-item" href="{{.Footer.RepoURL}}" rel="noopener">{{template "icon-github"}}<span>GitHub</span></a>
+        <form method="post" action="/theme" class="theme-form" data-autosubmit>
+            <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+            <input type="hidden" name="next" value="{{.Path}}">
+            <label for="theme-select">{{template "icon-theme"}}<span class="sr-only">Theme</span></label>
+            <span class="select-wrap">
+                <select id="theme-select" name="theme">
+                    <option value="system"{{if eq .Theme "system"}} selected{{end}}>System</option>
+                    <option value="light"{{if eq .Theme "light"}} selected{{end}}>Light</option>
+                    <option value="dark"{{if eq .Theme "dark"}} selected{{end}}>Dark</option>
+                </select>
+                {{template "icon-chevron"}}
+            </span>
+            <noscript><button type="submit" class="btn btn-small">Apply</button></noscript>
+        </form>
+    </div>
+</footer>
+{{end}}
