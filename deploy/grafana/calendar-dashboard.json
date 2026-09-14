@@ -112,7 +112,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(calendar_http_requests_total{code=~\"5..\"}[5m]))"
+          "expr": "sum(rate(calendar_http_requests_total{code=~\"5..\"}[5m])) or vector(0)"
         }
       ]
     },

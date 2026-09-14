@@ -335,6 +335,21 @@ a.grid-day[href]:hover {
     white-space: nowrap;
 }
 
+/* Read as "12:00 standup", the same order as a stacked block, so a one line
+   event is not mistaken for the all-day band above. The template emits the
+   title first because that is what survives truncation. */
+.block.short .block-time {
+    order: -1;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The title takes what the time leaves rather than pushing it out of view. */
+.block.short .block-title {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
 /* Every line keeps its full height and truncates sideways. Without this the
    flex children shrink instead, leaving half-height rows of clipped text. */
 .block > * {
@@ -374,9 +389,42 @@ a.grid-day[href]:hover {
     }
 }
 
+/* A stacked block drops its own time line when there is no room for it. A
+   short one keeps it: there the time sits inline, and a full width strip with
+   nothing but a title is indistinguishable from an all-day bar. */
 @container (max-height: 2.2rem) {
-    .block-time {
+    .block:not(.short) .block-time {
         display: none;
+    }
+}
+
+/* The rules above shed lines as a block gets shorter. This one does the same
+   as it gets narrower, which is the case on a phone and for events sharing a
+   column. Without it both lines truncate to two characters and neither says
+   anything. The time goes first: where the block sits already says when. */
+@container (max-width: 7rem) {
+    .block:not(.short) .block-time {
+        display: none;
+    }
+}
+
+/* Given room for a second line, wrap a long title instead of clipping it to
+   one. Overrides the nowrap on .block > *. */
+@container (min-height: 3rem) {
+    .block:not(.short) .block-title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}
+
+@container (min-height: 5rem) {
+    .block:not(.short) .block-title {
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
     }
 }
 
@@ -718,6 +766,13 @@ a.grid-day[href]:hover {
     .agenda-day {
         grid-template-columns: 1fr;
         gap: 0.3rem;
+    }
+
+    /* .cal-views is fixed to the bottom of the viewport at this width. The
+       footer comes after .cal, so its padding does not clear the nav and the
+       last row of links sits underneath it. */
+    body:has(.cal-views) .site-footer {
+        padding-bottom: 3.5rem;
     }
 }
 

@@ -3,10 +3,10 @@
     <div class="footer-info">
         <span>{{.Footer.AppName}}</span>
         <span>Version: {{if .Footer.VersionURL}}<a href="{{.Footer.VersionURL}}">{{.Footer.Version}}</a>{{else}}{{.Footer.Version}}{{end}}{{if .Footer.CommitURL}} (<a href="{{.Footer.CommitURL}}">{{.Footer.CommitShort}}</a>{{if .Footer.Modified}}, modified{{end}}){{end}}</span>
-        {{with .Footer.Built}}<span>Built: {{.}}</span>{{end}}
-        <span>Page: {{.PageTime}}</span>
-        <span>Template: {{.TemplateTime}}</span>
-        <span>{{.Footer.GoVersion}}</span>
+        {{with .Footer.Built}}<span class="footer-diag">Built: {{.}}</span>{{end}}
+        <span class="footer-diag">Page: {{.PageTime}}</span>
+        <span class="footer-diag">Template: {{.TemplateTime}}</span>
+        <span class="footer-diag">{{.Footer.GoVersion}}</span>
     </div>
     <div class="footer-links">
         <a class="bar-item" href="/privacy"><span>Privacy</span></a>
