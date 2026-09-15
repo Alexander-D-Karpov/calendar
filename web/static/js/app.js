@@ -181,6 +181,10 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
         body.innerHTML = html;
         dlg.replaceChildren(body);
         initForms(body);
+        // picker.js upgrades date and time inputs off this event. Without it a
+        // form opened in the dialog keeps the native controls, which is only
+        // visible in a browser: the full-page form is enhanced on load.
+        body.dispatchEvent(new CustomEvent("fragment", { bubbles: true }));
         if (!dlg.open) dlg.showModal();
         const focus = body.querySelector("[autofocus]");
         if (focus) focus.focus();

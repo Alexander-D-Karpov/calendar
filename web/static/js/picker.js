@@ -54,8 +54,20 @@
         if (!openPop) return;
         openPop.el.removeAttribute("data-open");
         openPop.el.removeAttribute("data-above");
+        openPop.el.removeAttribute("data-fixed");
+        openPop.el.style.top = openPop.el.style.left = openPop.el.style.minWidth = "";
         openPop.input.setAttribute("aria-expanded", "false");
         openPop = null;
+    }
+
+    // The dialog scrolls its own content, so an absolutely positioned popover
+    // is clipped at the dialog edge instead of floating over it.
+    function clipsOverflow(el) {
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            const s = getComputedStyle(p);
+            if (s.overflowY !== "visible" || s.overflowX !== "visible") return true;
+        }
+        return false;
     }
 
     function showPop(pop, input, onKey) {
@@ -63,12 +75,25 @@
         pop.setAttribute("data-open", "");
         input.setAttribute("aria-expanded", "true");
         openPop = { el: pop, input, onKey };
+        // Below 30rem the popover is a bottom sheet and positions itself.
+        if (!window.matchMedia("(min-width: 30rem)").matches) return;
+
+        const ir = input.getBoundingClientRect();
+        if (clipsOverflow(input)) {
+            pop.setAttribute("data-fixed", "");
+            pop.style.left = `${ir.left}px`;
+            pop.style.minWidth = `${ir.width}px`;
+            const h = pop.getBoundingClientRect().height;
+            const room = window.innerHeight - ir.bottom;
+            pop.style.top = (room < h && ir.top > h)
+                ? `${ir.top - h - 4}px`
+                : `${Math.min(ir.bottom + 4, Math.max(4, window.innerHeight - h - 4))}px`;
+            return;
+        }
         // Flip above the field when the popover would run past the viewport.
-        if (window.matchMedia("(min-width: 30rem)").matches) {
-            const r = pop.getBoundingClientRect();
-            if (r.bottom > window.innerHeight && input.getBoundingClientRect().top > r.height) {
-                pop.setAttribute("data-above", "");
-            }
+        const r = pop.getBoundingClientRect();
+        if (r.bottom > window.innerHeight && ir.top > r.height) {
+            pop.setAttribute("data-above", "");
         }
     }
 
@@ -364,6 +389,12 @@
     document.addEventListener("focusin", (e) => {
         if (openPop && !openPop.el.parentNode.contains(e.target)) closePop();
     });
+
+    // A viewport-pinned popover cannot follow its field, so close it rather
+    // than let it drift away when the dialog behind it scrolls.
+    document.addEventListener("scroll", () => {
+        if (openPop && openPop.el.hasAttribute("data-fixed")) closePop();
+    }, true);
 
     function enhance(root) {
         root.querySelectorAll('input[type="time"]:not([data-pick])').forEach((el) => {

@@ -35,6 +35,12 @@
     bottom: calc(100% + 4px);
 }
 
+/* Pinned to the viewport by picker.js when an ancestor would clip it, which
+   is what the dialog's own scrolling does. Coordinates are set inline. */
+.pick-pop[data-fixed] {
+    position: fixed;
+}
+
 /* Times ------------------------------------------------------------------ */
 
 .pick-list {
