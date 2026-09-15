@@ -6,6 +6,15 @@ from pathlib import Path
 from typing import Any
 
 
+# Codex launches the configured MCP server during thread_start but returns
+# without waiting for the child process, so the bridge unlinks its one-shot
+# capability a short moment after the call returns (~0.4s measured against
+# openai-codex 0.154.0). Long enough to absorb a slow host, short enough that a
+# runtime deferring MCP startup to first tool use still fails closed. Lives here
+# so the request path and the runtime smoke cannot drift apart.
+MCP_CAPABILITY_TIMEOUT = 10.0
+
+
 def normalize_tool_name(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
 

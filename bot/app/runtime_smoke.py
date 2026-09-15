@@ -14,12 +14,7 @@ from typing import AsyncIterator
 
 from aiohttp import web
 
-# Codex starts the configured MCP server during thread_start but does not wait
-# for the child process, so the one-shot capability is unlinked a short moment
-# after the RPC returns (~0.4s on the deployment this was measured against).
-# Generous enough to absorb a slow host, short enough that deferring MCP startup
-# to first tool use cannot pass.
-EAGER_MCP_STARTUP_TIMEOUT = 10.0
+from app.utils import MCP_CAPABILITY_TIMEOUT
 
 
 def _free_socket() -> socket.socket:
@@ -237,13 +232,13 @@ async def smoke_codex_config() -> None:
             # call returns rather than before it. Poll for it: no tool call is
             # ever made here, so a runtime that defers MCP startup until first
             # use still never consumes the capability and still fails below.
-            deadline = time.monotonic() + EAGER_MCP_STARTUP_TIMEOUT
+            deadline = time.monotonic() + MCP_CAPABILITY_TIMEOUT
             while cap_file.exists() and time.monotonic() < deadline:
                 await asyncio.sleep(0.05)
         if cap_file.exists():
             raise RuntimeError(
                 "the configured MCP bridge did not consume its capability within "
-                f"{EAGER_MCP_STARTUP_TIMEOUT:.0f}s of thread_start and without any tool call; "
+                f"{MCP_CAPABILITY_TIMEOUT:.0f}s of thread_start and without any tool call; "
                 "MCP startup is not eager and one-shot capability semantics are unsafe "
                 "with this runtime"
             )

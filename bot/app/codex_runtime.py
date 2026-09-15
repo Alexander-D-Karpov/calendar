@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import shutil
 import sys
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -17,7 +19,7 @@ from openai_codex import (
 )
 
 from .config import Settings
-from .utils import parse_agent_response
+from .utils import MCP_CAPABILITY_TIMEOUT, parse_agent_response
 
 
 RESULT_SCHEMA: dict[str, Any] = {
@@ -229,8 +231,14 @@ class CodexRuntime:
             kwargs["model"] = self.settings.codex_model
         try:
             thread = await client.thread_start(**kwargs)
-            # MCP startup happens as part of Codex initialization. The bridge must
-            # have consumed/unlinked the capability before a model turn can run.
+            # MCP startup happens as part of Codex initialization, but thread_start
+            # does not wait for the child, so the unlink lands just after it
+            # returns. The model turn must not start until the bridge has taken
+            # the capability, so wait for it here and still fail closed if it
+            # never happens.
+            deadline = time.monotonic() + MCP_CAPABILITY_TIMEOUT
+            while cap_file.exists() and time.monotonic() < deadline:
+                await asyncio.sleep(0.05)
             if cap_file.exists():
                 raise RuntimeError("calendar MCP bridge did not consume its one-shot capability file")
         except BaseException:
