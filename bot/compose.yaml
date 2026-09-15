@@ -14,6 +14,9 @@ services:
       retries: 3
       start_period: 15s
     security_opt:
+      # Codex sandboxes each request with bwrap, which cannot create its
+      # namespaces under Docker's default seccomp profile. See gen-seccomp.py.
+      - seccomp=./seccomp-userns.json
       - no-new-privileges:true
     pids_limit: 512
     mem_limit: 4g

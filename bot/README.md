@@ -49,6 +49,20 @@ docker compose up -d
 docker compose logs -f calendar-bot
 ```
 
+### Seccomp
+
+Compose runs the container under `seccomp-userns.json`, a copy of Docker's
+default profile that additionally permits the namespace syscalls. Codex
+sandboxes every request with `bwrap`, and under the stock profile that fails
+with `bwrap: No permissions to create a new namespace`, so no request can run.
+The profile is committed; regenerate it with `gen-seccomp.py` after a Docker
+daemon upgrade. Everything the default profile denies unconditionally —
+`init_module`, `bpf`, `perf_event_open`, `kexec_load` and the rest — stays
+denied, and the generator refuses to write a profile where that stops being
+true. This is a real widening of the container boundary relative to stock
+Docker; it buys back the in-container Codex sandbox, which otherwise cannot
+start at all.
+
 The first admin IDs from `ADMIN_IDS` are force-bootstrapped on every startup. Docker Compose also applies a 4 GiB memory cap, 2 CPU cap and 512 PID cap to bound runaway Codex processes; tune these if your server needs different limits. The capability directory is a `tmpfs`, so one-shot capability files do not land in the container writable layer under normal Compose deployment.
 
 ## First-time Telegram setup
