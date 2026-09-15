@@ -291,7 +291,7 @@ class LiveCodexSession:
         # is imported only on this path and asserted by runtime_smoke.
         from openai_codex._run import _collect_async_turn_result
 
-        handle = self.thread.turn(inputs, **kwargs)
+        handle = await self.thread.turn(inputs, **kwargs)
         stream = handle.stream()
 
         async def tee():

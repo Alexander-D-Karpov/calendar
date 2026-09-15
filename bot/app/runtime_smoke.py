@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import json
 import os
 import socket
@@ -296,6 +297,15 @@ def smoke_sdk_surface() -> None:
     for owner, attr in ((AsyncThread, "turn"), (AsyncTurnHandle, "stream"), (AsyncTurnHandle, "id")):
         if not hasattr(owner, attr):
             raise RuntimeError(f"{owner.__name__}.{attr} is gone; live progress streaming needs reworking")
+
+    # Shape matters as much as existence: turn() is awaited for its handle and
+    # stream() is iterated. Getting that wrong fails only once a real turn runs,
+    # which no smoke here performs, so assert it directly.
+    if not inspect.iscoroutinefunction(AsyncThread.turn):
+        raise RuntimeError("AsyncThread.turn is no longer awaitable; live progress streaming needs reworking")
+    if not inspect.isasyncgenfunction(AsyncTurnHandle.stream):
+        raise RuntimeError("AsyncTurnHandle.stream is no longer an async generator; "
+                           "live progress streaming needs reworking")
 
 
 async def main_async(mode: str) -> None:
