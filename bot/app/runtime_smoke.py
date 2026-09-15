@@ -7,11 +7,19 @@ import os
 import socket
 import sys
 import tempfile
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
 from aiohttp import web
+
+# Codex starts the configured MCP server during thread_start but does not wait
+# for the child process, so the one-shot capability is unlinked a short moment
+# after the RPC returns (~0.4s on the deployment this was measured against).
+# Generous enough to absorb a slow host, short enough that deferring MCP startup
+# to first tool use cannot pass.
+EAGER_MCP_STARTUP_TIMEOUT = 10.0
 
 
 def _free_socket() -> socket.socket:
@@ -224,10 +232,20 @@ async def smoke_codex_config() -> None:
         async with _stub_guard(cap) as guard_url:
             _write_good_mcp_config(good_home, workdir, guard_url, cap_file)
             await _codex_thread_start(good_home, workdir)
+            # thread_start launches the MCP server itself, but does not block
+            # until the child has started, so the unlink lands shortly after the
+            # call returns rather than before it. Poll for it: no tool call is
+            # ever made here, so a runtime that defers MCP startup until first
+            # use still never consumes the capability and still fails below.
+            deadline = time.monotonic() + EAGER_MCP_STARTUP_TIMEOUT
+            while cap_file.exists() and time.monotonic() < deadline:
+                await asyncio.sleep(0.05)
         if cap_file.exists():
             raise RuntimeError(
-                "Codex thread_start returned before the configured MCP bridge consumed its capability; "
-                "one-shot capability semantics are unsafe with this runtime"
+                "the configured MCP bridge did not consume its capability within "
+                f"{EAGER_MCP_STARTUP_TIMEOUT:.0f}s of thread_start and without any tool call; "
+                "MCP startup is not eager and one-shot capability semantics are unsafe "
+                "with this runtime"
             )
 
         # Profile-name validation.
