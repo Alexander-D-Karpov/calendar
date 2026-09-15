@@ -189,6 +189,45 @@ func mcpTools(d Deps, s schemaSet) []mcpTool {
 			},
 		},
 		{
+			Name: "list_changes", Title: "List changes", Annotations: readHints, scope: auth.ScopeCalendarsRead,
+			Description: "Returns changes to events, todos, calendars and lists since a sequence number, newest last, with the latest sequence to poll from next. origin marks a change that came from an external sync rather than this account.",
+			InputSchema: object(map[string]any{
+				"since": field("integer", "Return changes after this sequence number. Use 0, then the latest from the previous call."),
+				"limit": field("integer", "Changes to return, 1 to 1000. Defaults to 200."),
+			}),
+			run: func(ctx context.Context, owner domain.ID, raw json.RawMessage) (any, error) {
+				var a struct {
+					Since int `json:"since"`
+					Limit *int `json:"limit"`
+				}
+				if err := decodeArgs(raw, &a); err != nil {
+					return nil, err
+				}
+				limit := defaultChangeLimit
+				if a.Limit != nil {
+					limit = *a.Limit
+				}
+				limit = min(max(limit, 1), maxChangeLimit)
+				rows, err := d.Changes.ChangesSince(ctx, owner, int64(max(a.Since, 0)), limit)
+				if err != nil {
+					return nil, err
+				}
+				latest, err := d.Changes.LatestSeq(ctx, owner)
+				if err != nil {
+					return nil, err
+				}
+				items := make([]changeJSON, len(rows))
+				for i, c := range rows {
+					items[i] = changeJSON{
+						Seq: c.Seq, Entity: c.Entity, ID: c.EntityID.String(), Op: c.Op,
+						CalendarID: idString(c.CalendarID), ListID: idString(c.ListID),
+						From: utcPtr(c.From), To: utcPtr(c.To), Origin: c.Origin,
+					}
+				}
+				return changeList{Items: items, Latest: latest}, nil
+			},
+		},
+		{
 			Name: "search", Title: "Search", Annotations: readHints, scope: auth.ScopeCalendarsRead,
 			Description: "Finds events and todos by text. Supports \"exact phrase\", -exclude, and the filters in:<calendar or list>, type:event, type:todo, is:open, is:done, is:overdue, is:recurring, is:private, has:time, has:checks, has:body, has:location, has:reminders, after: and before: taking a date or today or +7d, and priority:>=2.",
 			InputSchema: object(map[string]any{
