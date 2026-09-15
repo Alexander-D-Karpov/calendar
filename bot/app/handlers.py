@@ -64,6 +64,7 @@ class Handlers:
         self.router = Router()
         self.pending_auth_upload: set[int] = set()
         self.login_tasks: dict[int, asyncio.Task[None]] = {}
+        self.login_handles: dict[int, Any] = {}
         self.albums: dict[str, list[Message]] = {}
         self.album_tasks: dict[str, asyncio.Task[None]] = {}
         self._register()
@@ -191,6 +192,7 @@ class Handlers:
         except Exception as exc:
             await message.answer(f"Could not start Codex device login: {exc}")
             return
+        self.login_handles[uid] = handle
         await message.answer(
             f"Open:\n{handle.verification_url}\n\nCode: {handle.user_code}\n\n"
             "Complete the login. I will save it to your private Codex volume."
@@ -209,6 +211,7 @@ class Handlers:
             except Exception as exc:
                 await bot.send_message(uid, f"Codex login failed: {exc}")
             finally:
+                self.login_handles.pop(uid, None)
                 await client.close()
 
         self.login_tasks[uid] = asyncio.create_task(waiter())
@@ -232,6 +235,31 @@ class Handlers:
         except Exception as exc:
             await message.answer(f"Codex auth exists but account check failed: {exc}")
 
+    async def _abandon_login(self, uid: int) -> bool:
+        """Drop a pending device login so a new one can be started.
+
+        Without this a login that is never completed holds the slot for the
+        whole DEVICE_LOGIN_TIMEOUT_SECONDS, and /codex_login keeps answering
+        "already pending" with no way out short of restarting the container.
+        """
+        handle = self.login_handles.pop(uid, None)
+        task = self.login_tasks.pop(uid, None)
+        if handle is not None:
+            try:
+                await handle.cancel()
+            except Exception:
+                pass
+        if task is None or task.done():
+            return False
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
+        return True
+
     async def codex_logout(self, message: Message) -> None:
         if not await self._private_allowed(message):
             return
@@ -239,11 +267,16 @@ class Handlers:
         if self.requests.has_active(uid):
             await message.answer("Cancel the active request first with /cancel.")
             return
+        abandoned = await self._abandon_login(uid)
         try:
             await self.codex.logout(uid)
         except Exception:
             self.codex.auth_path(uid).unlink(missing_ok=True)
-        await message.answer("Codex logged out.")
+        await message.answer(
+            "Codex logged out."
+            + (" Pending device login cancelled; run /codex_login for a new code."
+               if abandoned else "")
+        )
 
     async def codex_session(self, message: Message) -> None:
         if not await self._private_allowed(message):
