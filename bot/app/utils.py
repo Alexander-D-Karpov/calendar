@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, tzinfo
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,28 @@ from typing import Any
 # runtime deferring MCP startup to first tool use still fails closed. Lives here
 # so the request path and the runtime smoke cannot drift apart.
 MCP_CAPABILITY_TIMEOUT = 10.0
+
+
+def local_time_label(value: Any, tz: tzinfo) -> str:
+    """Render an API timestamp as HH:MM in the reader's own timezone.
+
+    The API mixes offsets within one response ("...Z" next to "...+03:00"), so
+    the raw values cannot be read or compared at a glance. Anything that does
+    not parse is handed back untouched rather than dropped, and a bare date
+    becomes "all day" instead of a misleading 00:00.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return "all day"
+    try:
+        moment = datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
+    except ValueError:
+        return text
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(tz)
+    return moment.strftime("%H:%M")
 
 
 def normalize_tool_name(name: str) -> str:

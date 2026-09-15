@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from .calendar_mcp import CalendarMCP
 from .crypto import SecretBox
 from .store import Store
+from .utils import local_time_label
 
 SendFn = Callable[[int, str], Awaitable[None]]
 log = logging.getLogger(__name__)
@@ -145,23 +146,25 @@ class CalendarPoller:
         event_items = events.get("items", []) if isinstance(events, dict) else []
         todo_items = todos.get("items", []) if isinstance(todos, dict) else []
         lines = [f"Agenda for {today.isoformat()}:"]
+        tz = now.tzinfo
         if event_items:
             lines.append("Events:")
             for e in event_items[:12]:
                 if not isinstance(e, dict):
                     continue
-                when = e.get("start", "")
+                when = local_time_label(e.get("start"), tz)
                 title = e.get("title") or "(untitled)"
-                lines.append(f"• {when} — {title}")
+                lines.append(f"• {when} — {title}" if when else f"• {title}")
         if todo_items:
             lines.append("Todos:")
             for t in todo_items[:12]:
                 if not isinstance(t, dict):
                     continue
-                due = " ".join(
-                    x for x in [str(t.get("due_date") or ""), str(t.get("due_time") or "")] if x
-                ).strip()
-                lines.append(f"• {due} — {t.get('title') or '(untitled)'}")
+                # The agenda only covers today, so a todo with no due time adds
+                # nothing by repeating today's date.
+                due = local_time_label(t.get("due_time") or t.get("due_date"), tz)
+                title = t.get("title") or "(untitled)"
+                lines.append(f"• {due} — {title}" if due and due != "all day" else f"• {title}")
         if not event_items and not todo_items:
             lines.append("Nothing scheduled or due today.")
         await self.send(user_id, "\n".join(lines))
