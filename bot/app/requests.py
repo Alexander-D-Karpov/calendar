@@ -149,6 +149,17 @@ class RequestManager:
                 self._cleanup_incoming(incoming)
                 await self.send(incoming.chat_id, "Calendar is not linked. Use /link cal_… first.")
                 return None
+            # A granted session is refreshed from the lender on every request,
+            # so their re-login propagates without the borrower doing anything.
+            lender = user.get("codex_granted_by")
+            if lender and not self.codex.lend_auth(user_id, int(lender)):
+                self._cleanup_incoming(incoming)
+                await self.send(
+                    incoming.chat_id,
+                    "The shared Codex session is no longer available. "
+                    "Ask the admin to log in again, or run /codex_login.",
+                )
+                return None
             if not self.codex.auth_path(user_id).exists():
                 self._cleanup_incoming(incoming)
                 await self.send(incoming.chat_id, "Codex is not logged in. Use /codex_login first.")

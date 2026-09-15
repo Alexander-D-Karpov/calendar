@@ -193,6 +193,43 @@ class CodexRuntime:
             await codex.close()
             raise
 
+    def borrowed_marker(self, user_id: int) -> Path:
+        return self.home(user_id) / "auth.borrowed"
+
+    def has_own_auth(self, user_id: int) -> bool:
+        """True only for credentials the user logged in with themselves."""
+        return self.auth_path(user_id).exists() and not self.borrowed_marker(user_id).exists()
+
+    def lend_auth(self, borrower: int, lender: int) -> bool:
+        """Copy a lender's Codex credentials into the borrower's CODEX_HOME.
+
+        The homes stay separate on purpose: config.toml there is request-scoped,
+        and pointing two users at one CODEX_HOME would let a second request
+        rewrite the config of a live one. The copy is refreshed on every request
+        so a re-login by the lender propagates with no bookkeeping, and the
+        marker keeps a borrowed copy distinguishable from a real login, which
+        must never be overwritten or revoked out from under its owner.
+        """
+        if self.has_own_auth(borrower):
+            return True
+        source = self.auth_path(lender)
+        if not source.exists():
+            return False
+        dest = self.auth_path(borrower)
+        tmp = dest.with_suffix(".tmp")
+        shutil.copyfile(source, tmp)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, dest)
+        self.borrowed_marker(borrower).write_text(str(lender), encoding="utf-8")
+        return True
+
+    def drop_lent_auth(self, borrower: int) -> None:
+        """Remove a borrowed copy, leaving a real login untouched."""
+        if self.has_own_auth(borrower):
+            return
+        self.auth_path(borrower).unlink(missing_ok=True)
+        self.borrowed_marker(borrower).unlink(missing_ok=True)
+
     def import_auth_json(self, user_id: int, source: Path) -> None:
         if source.stat().st_size > 2 * 1024 * 1024:
             raise ValueError("auth.json is unexpectedly large")

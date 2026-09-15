@@ -42,7 +42,10 @@ Admin:
 /users
 /user_add <telegram_id> [user|admin]
 /user_role <telegram_id> <user|admin>
-/user_del <telegram_id>"""
+/user_del <telegram_id>
+/codex_grant <telegram_id> — let a user run on your Codex session
+/codex_revoke <telegram_id>
+/codex_grants"""
 
 
 class Handlers:
@@ -98,6 +101,9 @@ class Handlers:
         r.message.register(self.user_add, Command("user_add"))
         r.message.register(self.user_role, Command("user_role"))
         r.message.register(self.user_del, Command("user_del"))
+        r.message.register(self.codex_grant, Command("codex_grant"))
+        r.message.register(self.codex_revoke, Command("codex_revoke"))
+        r.message.register(self.codex_grants, Command("codex_grants"))
         r.message.register(self.catch_all)
         r.edited_message.register(self.edited)
 
@@ -129,11 +135,13 @@ class Handlers:
             return
         uid = message.from_user.id
         user = self.store.get_user(uid) or {}
-        codex_ok = self.codex.auth_path(uid).exists()
+        own = self.codex.has_own_auth(uid)
+        lender = (user or {}).get("codex_granted_by")
+        codex_state = "own login" if own else (f"shared by {lender}" if lender else "missing")
         await message.answer(
             f"Role: {user.get('role')}\n"
             f"Calendar: {'linked' if user.get('calendar_token') else 'not linked'}\n"
-            f"Codex auth file: {'present' if codex_ok else 'missing'}\n"
+            f"Codex session: {codex_state}\n"
             f"Timezone: {user.get('timezone') or self.settings.default_timezone}\n"
             f"Polling: {'on' if user.get('poll_enabled') else 'off'}\n"
             f"Active request: {'yes' if self.requests.has_active(uid) else 'no'}"
@@ -269,6 +277,13 @@ class Handlers:
             await message.answer("Cancel the active request first with /cancel.")
             return
         abandoned = await self._abandon_login(uid)
+        if not self.codex.has_own_auth(uid):
+            # A borrowed session belongs to someone else: logging it out through
+            # Codex would invalidate the lender's credentials for everyone.
+            self.codex.drop_lent_auth(uid)
+            await self.store.update_user(uid, lambda u: u.__setitem__("codex_granted_by", None))
+            await message.answer("Stopped using the shared Codex session.")
+            return
         try:
             await self.codex.logout(uid)
         except Exception:
@@ -428,6 +443,63 @@ class Handlers:
             await self._collect_album(message, bot)
             return
         await self._submit_messages([message], bot)
+
+    async def codex_grant(self, message: Message, command: CommandObject) -> None:
+        if not await self._admin(message):
+            return
+        admin_id = message.from_user.id
+        target = (command.args or "").strip()
+        if not target.isdigit():
+            await message.answer("Usage: /codex_grant <telegram_id>")
+            return
+        uid = int(target)
+        if uid == admin_id:
+            await message.answer("That is your own account.")
+            return
+        if not self.store.get_user(uid):
+            await message.answer("Unknown user. Add them with /user_add first.")
+            return
+        if not self.codex.has_own_auth(admin_id):
+            await message.answer("Log in with /codex_login before sharing your session.")
+            return
+        if self.codex.has_own_auth(uid):
+            await message.answer("That user already has their own Codex login; nothing to share.")
+            return
+        await self.store.update_user(uid, lambda u: u.__setitem__("codex_granted_by", admin_id))
+        await message.answer(
+            f"Shared your Codex session with {uid}. Their requests now run on your ChatGPT "
+            "account and against your quota. Their calendar stays their own."
+        )
+
+    async def codex_revoke(self, message: Message, command: CommandObject) -> None:
+        if not await self._admin(message):
+            return
+        target = (command.args or "").strip()
+        if not target.isdigit():
+            await message.answer("Usage: /codex_revoke <telegram_id>")
+            return
+        uid = int(target)
+        user = self.store.get_user(uid) or {}
+        if not user.get("codex_granted_by"):
+            await message.answer("That user is not using a shared session.")
+            return
+        if self.requests.has_active(uid):
+            await message.answer("That user has a request running. Try again once it finishes.")
+            return
+        await self.store.update_user(uid, lambda u: u.__setitem__("codex_granted_by", None))
+        self.codex.drop_lent_auth(uid)
+        await message.answer(f"Revoked the shared Codex session for {uid}.")
+
+    async def codex_grants(self, message: Message) -> None:
+        if not await self._admin(message):
+            return
+        rows = []
+        for uid in self.store.list_user_ids():
+            lender = (self.store.get_user(uid) or {}).get("codex_granted_by")
+            if lender:
+                rows.append(f"{uid} ← {lender}")
+        await message.answer("Shared Codex sessions:\n" + "\n".join(rows) if rows
+                             else "No shared Codex sessions.")
 
     async def edited(self, message: Message, bot: Bot) -> None:
         """Re-run a request when its message is edited.
