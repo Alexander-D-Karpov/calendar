@@ -69,30 +69,63 @@ async def main() -> None:
 
         MIN_INTERVAL = 1.5
 
+        MAX_STEPS = 12
+        THINKING_TAIL = 500
+
         def __init__(self, chat_id: int) -> None:
             self.chat_id = chat_id
             self.message_id: int | None = None
             self.shown = ""
             self.last_edit = 0.0
+            self.steps: list[str] = []
+            self.dropped = 0
+            self.thinking = ""
             self.lock = asyncio.Lock()
 
-        async def update(self, text: str) -> None:
+        def _render(self) -> str:
+            lines: list[str] = []
+            if self.steps:
+                lines += [f"• {s}" for s in self.steps]
+                if self.dropped:
+                    lines.insert(0, f"…{self.dropped} earlier step(s)")
+            if self.thinking:
+                tail = self.thinking[-self.THINKING_TAIL:].strip()
+                if len(self.thinking) > self.THINKING_TAIL:
+                    tail = "…" + tail
+                lines += ["", tail]
+            return "⏳ " + ("\n".join(lines) if lines else "Working…")
+
+        async def update(self, kind: str, text: str) -> None:
             async with self.lock:
-                if text == self.shown:
-                    return
-                now = time.monotonic()
-                if self.message_id is None:
-                    msg = await bot.send_message(self.chat_id, f"⏳ {text}…")
-                    self.message_id, self.shown, self.last_edit = msg.message_id, text, now
-                    return
-                if now - self.last_edit < self.MIN_INTERVAL:
-                    return
-                try:
-                    await bot.edit_message_text(f"⏳ {text}…", chat_id=self.chat_id,
-                                                message_id=self.message_id)
-                except TelegramBadRequest:
-                    return  # message gone or unchanged; the final answer still lands
-                self.shown, self.last_edit = text, now
+                if kind == "thinking":
+                    self.thinking += text
+                else:
+                    # Every tool call is listed; only an immediate repeat of the
+                    # same call is folded, so a retry is still visible.
+                    if not self.steps or self.steps[-1] != text:
+                        self.steps.append(text)
+                    if len(self.steps) > self.MAX_STEPS:
+                        self.dropped += len(self.steps) - self.MAX_STEPS
+                        self.steps = self.steps[-self.MAX_STEPS:]
+                await self._flush()
+
+        async def _flush(self) -> None:
+            body = self._render()
+            if body == self.shown:
+                return
+            now = time.monotonic()
+            if self.message_id is None:
+                msg = await bot.send_message(self.chat_id, body[:4096])
+                self.message_id, self.shown, self.last_edit = msg.message_id, body, now
+                return
+            if now - self.last_edit < self.MIN_INTERVAL:
+                return
+            try:
+                await bot.edit_message_text(body[:4096], chat_id=self.chat_id,
+                                            message_id=self.message_id)
+            except TelegramBadRequest:
+                return  # message gone or unchanged; the final answer still lands
+            self.shown, self.last_edit = body, now
 
         async def finish(self, text: str) -> None:
             async with self.lock:

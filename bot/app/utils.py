@@ -35,6 +35,31 @@ _TOOL_LABELS = {
 }
 
 
+def progress_event(event: Any) -> tuple[str, str] | None:
+    """Classify a turn notification as ("tool" | "thinking" | "note", text).
+
+    Reasoning arrives as deltas that are worth showing while the model works.
+    The agent message also arrives as deltas, but the reply is a structured
+    object, so those would render half-built JSON: they are matched by method
+    and deliberately ignored.
+    """
+    payload = getattr(event, "payload", None)
+    method = str(getattr(event, "method", "") or "").lower()
+    if payload is None:
+        return None
+
+    delta = getattr(payload, "delta", None)
+    if isinstance(delta, str) and delta:
+        return ("thinking", delta) if "reasoning" in method else None
+
+    message = getattr(payload, "message", None)
+    if isinstance(message, str) and message and "mcp" in method:
+        return ("note", message)
+
+    label = progress_label(event)
+    return ("tool", label) if label else None
+
+
 def progress_label(event: Any) -> str | None:
     """Turn a Codex turn notification into one line a person can read.
 

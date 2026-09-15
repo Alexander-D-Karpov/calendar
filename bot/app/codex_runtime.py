@@ -20,11 +20,11 @@ from openai_codex import (
 )
 
 from .config import Settings
-from .utils import MCP_CAPABILITY_TIMEOUT, parse_agent_response, progress_label
+from .utils import MCP_CAPABILITY_TIMEOUT, parse_agent_response, progress_event
 
 log = logging.getLogger(__name__)
 
-ProgressFn = Callable[[str], Awaitable[None]]
+ProgressFn = Callable[[str, str], Awaitable[None]]
 
 
 RESULT_SCHEMA: dict[str, Any] = {
@@ -297,9 +297,12 @@ class LiveCodexSession:
         async def tee():
             async for event in stream:
                 try:
-                    label = progress_label(event)
-                    if label:
-                        await on_progress(label)
+                    update = progress_event(event)
+                    if update:
+                        kind, text = update
+                        if kind == "tool":
+                            log.info("mcp/tool: %s", text)
+                        await on_progress(kind, text)
                 except Exception:  # a progress line must never fail the request
                     log.debug("progress update failed", exc_info=True)
                 yield event
