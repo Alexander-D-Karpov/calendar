@@ -92,6 +92,10 @@
         const box = wrap(input);
         input.setAttribute("inputmode", "numeric");
         input.placeholder = input.placeholder || "--:--";
+        // A text input defaults to size=20. Without this the upgraded field is
+        // twice the width of the native time control it replaced and pushes the
+        // whole row off a narrow screen.
+        input.size = 5;
 
         const pop = document.createElement("div");
         pop.className = "pick-pop";
@@ -108,6 +112,10 @@
         const startInput = isEnd && form ? form.querySelector('input[name="start_time"]') : null;
 
         let active = -1;
+        // Only narrow the list while the user is typing. Opening a field that
+        // already holds a value must still offer every other time, or editing
+        // an event means clearing the field before you can pick a new one.
+        let filtering = false;
 
         function options() {
             const base = parseTime(startInput && startInput.value) ?? null;
@@ -127,7 +135,7 @@
         }
 
         function render() {
-            const typed = input.value.trim();
+            const typed = filtering ? input.value.trim() : "";
             const all = options();
             const shown = typed ? all.filter((o) => o.value.startsWith(typed)) : all;
             list.textContent = "";
@@ -183,6 +191,7 @@
 
         function open() {
             active = -1;
+            filtering = false;
             render();
             showPop(pop, input, onKey);
             const cur = list.querySelector('[aria-selected="true"]');
@@ -203,7 +212,7 @@
 
         input.addEventListener("focus", open);
         input.addEventListener("mousedown", () => { if (!openPop) open(); });
-        input.addEventListener("input", () => { active = -1; render(); });
+        input.addEventListener("input", () => { active = -1; filtering = true; render(); });
         input.addEventListener("blur", () => {
             const mins = parseTime(input.value);
             if (mins !== null) input.value = hhmm(mins);
@@ -217,6 +226,7 @@
     function enhanceDate(input) {
         const box = wrap(input);
         input.placeholder = input.placeholder || "yyyy-mm-dd";
+        input.size = 10;
 
         const pop = document.createElement("div");
         pop.className = "pick-pop";
@@ -226,6 +236,19 @@
         box.appendChild(pop);
 
         let cursor = null;
+        // Returning focus to the field would re-fire its focus handler and
+        // pop the calendar straight back open, because a real mouse click
+        // leaves focus on the day button rather than the input.
+        let refocusing = false;
+
+        function commit(value) {
+            input.value = value;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+            closePop();
+            refocusing = true;
+            input.focus();
+            refocusing = false;
+        }
 
         function draw() {
             const selected = parseISO(input.value);
@@ -278,12 +301,7 @@
                 if (d.getMonth() !== cursor.getMonth()) b.setAttribute("data-other", "");
                 if (iso(d) === iso(today)) b.setAttribute("data-today", "");
                 b.setAttribute("aria-selected", selected && iso(d) === iso(selected) ? "true" : "false");
-                b.addEventListener("click", () => {
-                    input.value = iso(d);
-                    input.dispatchEvent(new Event("change", { bubbles: true }));
-                    closePop();
-                    input.focus();
-                });
+                b.addEventListener("click", () => commit(iso(d)));
                 grid.appendChild(b);
             }
             cal.appendChild(grid);
@@ -293,29 +311,20 @@
             const todayBtn = document.createElement("button");
             todayBtn.type = "button";
             todayBtn.textContent = "Today";
-            todayBtn.addEventListener("click", () => {
-                input.value = iso(new Date());
-                input.dispatchEvent(new Event("change", { bubbles: true }));
-                closePop();
-                input.focus();
-            });
+            todayBtn.addEventListener("click", () => commit(iso(new Date())));
             foot.appendChild(todayBtn);
             if (!input.required) {
                 const clear = document.createElement("button");
                 clear.type = "button";
                 clear.textContent = "Clear";
-                clear.addEventListener("click", () => {
-                    input.value = "";
-                    input.dispatchEvent(new Event("change", { bubbles: true }));
-                    closePop();
-                    input.focus();
-                });
+                clear.addEventListener("click", () => commit(""));
                 foot.appendChild(clear);
             }
             cal.appendChild(foot);
         }
 
         function open() {
+            if (refocusing) return;
             cursor = null;
             draw();
             showPop(pop, input, onKey);
