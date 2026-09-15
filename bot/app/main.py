@@ -6,6 +6,8 @@ import shutil
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import LinkPreviewOptions
 
 from .calendar_mcp import CalendarMCP
 from .codex_runtime import CodexRuntime
@@ -16,6 +18,9 @@ from .handlers import Handlers
 from .poller import CalendarPoller
 from .requests import RequestManager
 from .store import Store
+from .utils import split_message, telegram_html
+
+log = logging.getLogger(__name__)
 
 
 async def main() -> None:
@@ -53,7 +58,16 @@ async def main() -> None:
     bot = Bot(settings.telegram_bot_token, session=telegram_session)
 
     async def send(chat_id: int, text: str) -> None:
-        await bot.send_message(chat_id, text[:4096])
+        # The model answers in Markdown. Telegram renders a small HTML subset;
+        # anything that still fails to parse is sent as plain text rather than
+        # lost, because a dropped reply is worse than an unformatted one.
+        for chunk in split_message(text):
+            try:
+                await bot.send_message(chat_id, telegram_html(chunk), parse_mode="HTML",
+                                       link_preview_options=LinkPreviewOptions(is_disabled=True))
+            except TelegramBadRequest:
+                log.warning("falling back to plain text for chat %s", chat_id, exc_info=True)
+                await bot.send_message(chat_id, chunk)
 
     guard = GuardServer(calendar, store, settings.guard_host, settings.guard_port, settings.capability_ttl_seconds)
     await guard.start()

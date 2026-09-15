@@ -16,6 +16,74 @@ from typing import Any
 MCP_CAPABILITY_TIMEOUT = 10.0
 
 
+_FENCE = re.compile(r"```(\w*)\n?(.*?)```", re.S)
+_INLINE_CODE = re.compile(r"`([^`\n]+)`")
+_LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+_BOLD = re.compile(r"(?<!\w)(?:\*\*|__)(\S(?:.*?\S)?)(?:\*\*|__)(?!\w)", re.S)
+_ITALIC = re.compile(r"(?<![\w*_])[*_](\S(?:.*?\S)?)[*_](?![\w*_])", re.S)
+_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*$", re.M)
+
+
+def telegram_html(text: str) -> str:
+    """Convert the model's Markdown to the small HTML subset Telegram renders.
+
+    Telegram has no Markdown mode that survives arbitrary model output: its
+    MarkdownV2 requires escaping a dozen characters and rejects the whole
+    message on a single stray one. HTML is escaped once, up front, so the worst
+    case is a literal asterisk rather than a message that fails to send.
+    """
+    slots: list[str] = []
+
+    def _stash(html: str) -> str:
+        slots.append(html)
+        return f"\x00{len(slots) - 1}\x00"
+
+    def _fence(m: re.Match[str]) -> str:
+        return _stash(f"<pre><code>{_esc(m.group(2).rstrip())}</code></pre>")
+
+    def _code(m: re.Match[str]) -> str:
+        return _stash(f"<code>{_esc(m.group(1))}</code>")
+
+    # Code is stashed before escaping so its contents are never treated as markup.
+    out = _FENCE.sub(_fence, text)
+    out = _INLINE_CODE.sub(_code, out)
+    out = _esc(out)
+    out = _HEADING.sub(r"<b>\1</b>", out)
+    out = _LINK.sub(lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>', out)
+    out = _BOLD.sub(r"<b>\1</b>", out)
+    out = _ITALIC.sub(r"<i>\1</i>", out)
+    for i, html in enumerate(slots):
+        out = out.replace(f"\x00{i}\x00", html)
+    return out
+
+
+def _esc(s: str) -> str:
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def split_message(text: str, limit: int = 4096) -> list[str]:
+    """Split for Telegram's per-message limit, preferring line boundaries.
+
+    The previous behaviour truncated at the limit, so a long answer lost its
+    tail with no indication that anything was missing.
+    """
+    if len(text) <= limit:
+        return [text] if text else []
+    parts: list[str] = []
+    rest = text
+    while len(rest) > limit:
+        cut = rest.rfind("\n", 0, limit)
+        if cut <= 0:
+            cut = rest.rfind(" ", 0, limit)
+        if cut <= 0:
+            cut = limit
+        parts.append(rest[:cut].rstrip())
+        rest = rest[cut:].lstrip("\n")
+    if rest:
+        parts.append(rest)
+    return parts
+
+
 def local_time_label(value: Any, tz: tzinfo) -> str:
     """Render an API timestamp as HH:MM in the reader's own timezone.
 
