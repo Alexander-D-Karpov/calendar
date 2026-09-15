@@ -114,8 +114,13 @@ func (s *Store) Restore(ctx context.Context, owner, id domain.ID, entity string)
 					return err
 				}
 				list := t.ListID
+				// Without the span a restored todo never overlaps an open view's
+				// range, so the undo lands in the database but no calendar
+				// refreshes. Every other todo mutation records it.
+				from, to := todoRange(t)
 				if err := recordChange(ctx, q, domain.Change{
-					OwnerID: owner, Entity: domain.EntityTodo, EntityID: t.ID, Op: domain.OpRestore, ListID: &list,
+					OwnerID: owner, Entity: domain.EntityTodo, EntityID: t.ID, Op: domain.OpRestore,
+					ListID: &list, From: from, To: to,
 				}); err != nil {
 					return err
 				}
