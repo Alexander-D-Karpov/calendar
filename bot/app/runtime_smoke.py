@@ -277,8 +277,30 @@ async def smoke_codex_config() -> None:
         )
 
 
+def smoke_sdk_surface() -> None:
+    """Fail deployment if the streaming internals the bot leans on moved.
+
+    Live progress tees the turn stream through the SDK's own result collector
+    instead of rebuilding it. That symbol is private, so an SDK bump could
+    remove it; catching that here beats discovering it on a user's request.
+    """
+    from openai_codex import AsyncThread, AsyncTurnHandle
+
+    try:
+        from openai_codex._run import _collect_async_turn_result  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError(
+            "openai_codex._run._collect_async_turn_result is gone; live progress "
+            "streaming in codex_runtime.LiveCodexSession.run needs reworking"
+        ) from exc
+    for owner, attr in ((AsyncThread, "turn"), (AsyncTurnHandle, "stream"), (AsyncTurnHandle, "id")):
+        if not hasattr(owner, attr):
+            raise RuntimeError(f"{owner.__name__}.{attr} is gone; live progress streaming needs reworking")
+
+
 async def main_async(mode: str) -> None:
     if mode in {"all", "bridge"}:
+        smoke_sdk_surface()
         await smoke_bridge()
     if mode in {"all", "codex-config"}:
         await smoke_codex_config()

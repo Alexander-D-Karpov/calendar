@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Protocol
 from zoneinfo import ZoneInfo
 
 from .codex_runtime import CodexRuntime, LiveCodexSession
@@ -41,6 +41,15 @@ class ActiveRequest:
 SendFn = Callable[[int, str], Awaitable[None]]
 
 
+class LiveStatus(Protocol):
+    async def update(self, text: str) -> None: ...
+    async def finish(self, text: str) -> None: ...
+    async def discard(self) -> None: ...
+
+
+StatusFn = Callable[[int], Awaitable[LiveStatus]]
+
+
 class RequestManager:
     def __init__(
         self,
@@ -53,7 +62,9 @@ class RequestManager:
         send: SendFn,
         work_root: Path,
         default_timezone: str,
+        status: StatusFn | None = None,
     ) -> None:
+        self.status = status
         self.store = store
         self.crypto = crypto
         self.guard = guard
@@ -245,6 +256,16 @@ class RequestManager:
             body += "\nNew attached files:\n" + "\n".join(f"- {name}" for name in sorted(added_names))
         await self._turn(req, f"User answer to your question:\n{body}", images)
 
+    @staticmethod
+    async def _drop(live: LiveStatus | None) -> None:
+        """Remove the progress message so an error is not left under a spinner."""
+        if live is None:
+            return
+        try:
+            await live.discard()
+        except Exception:
+            pass
+
     async def _turn(self, req: ActiveRequest, text: str, images: list[Path]) -> None:
         if req.finished:
             return
@@ -252,28 +273,42 @@ class RequestManager:
             await self.send(req.chat_id, "Calendar capability expired; the request was cancelled.")
             await self._finish(req, final_text="Capability expired", save_history=False)
             return
+
+        # A single message shows what the model is doing and then becomes the
+        # answer, so a slow request is not silence.
+        live = await self.status(req.chat_id) if self.status else None
         try:
-            response = await asyncio.wait_for(req.session.run(text, images), timeout=self.timeout)
+            progress = {"on_progress": live.update} if live else {}
+            response = await asyncio.wait_for(
+                req.session.run(text, images, **progress), timeout=self.timeout
+            )
         except asyncio.TimeoutError:
             if req.finished:
                 return
+            await self._drop(live)
             await self.send(req.chat_id, "Codex request timed out and was cancelled.")
             await self._finish(req, final_text="Timed out", save_history=False)
             return
         except asyncio.CancelledError:
+            await self._drop(live)
             if not req.finished:
                 await asyncio.shield(self._finish(req, final_text="Cancelled", save_history=False))
             raise
         except Exception as exc:
             if req.finished:
                 return
+            await self._drop(live)
             await self.send(req.chat_id, f"Codex failed: {exc}")
             await self._finish(req, final_text=str(exc), save_history=False)
             return
 
         if req.finished:
+            await self._drop(live)
             return
-        await self.send(req.chat_id, response["text"])
+        if live:
+            await live.finish(response["text"])
+        else:
+            await self.send(req.chat_id, response["text"])
         if response["status"] == "ask":
             req.state = "asking"
             self.guard.touch(req.cap)

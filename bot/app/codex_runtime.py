@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import shutil
 import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from openai_codex import (
     ApprovalMode,
@@ -19,7 +20,11 @@ from openai_codex import (
 )
 
 from .config import Settings
-from .utils import MCP_CAPABILITY_TIMEOUT, parse_agent_response
+from .utils import MCP_CAPABILITY_TIMEOUT, parse_agent_response, progress_label
+
+log = logging.getLogger(__name__)
+
+ProgressFn = Callable[[str], Awaitable[None]]
 
 
 RESULT_SCHEMA: dict[str, Any] = {
@@ -265,15 +270,44 @@ class LiveCodexSession:
         self.thread = thread
         self.workdir = workdir
 
-    async def run(self, text: str, image_paths: list[Path] | None = None) -> dict[str, Any]:
+    async def run(
+        self,
+        text: str,
+        image_paths: list[Path] | None = None,
+        on_progress: ProgressFn | None = None,
+    ) -> dict[str, Any]:
         inputs: list[Any] = [TextInput(text=text)]
         for path in image_paths or []:
             inputs.append(LocalImageInput(path=str(path)))
-        result = await self.thread.run(
-            inputs,
-            output_schema=RESULT_SCHEMA,
-            approval_mode=ApprovalMode.deny_all,
-        )
+        kwargs = {"output_schema": RESULT_SCHEMA, "approval_mode": ApprovalMode.deny_all}
+        if on_progress is None:
+            result = await self.thread.run(inputs, **kwargs)
+            return parse_agent_response(result.final_response)
+
+        # The answer is a structured object, so there is no partial text worth
+        # streaming; what is worth showing is which tool is running. Tee the
+        # stream so the SDK still assembles the result, rather than rebuilding
+        # that logic here and drifting from it. The collector is private, so it
+        # is imported only on this path and asserted by runtime_smoke.
+        from openai_codex._run import _collect_async_turn_result
+
+        handle = self.thread.turn(inputs, **kwargs)
+        stream = handle.stream()
+
+        async def tee():
+            async for event in stream:
+                try:
+                    label = progress_label(event)
+                    if label:
+                        await on_progress(label)
+                except Exception:  # a progress line must never fail the request
+                    log.debug("progress update failed", exc_info=True)
+                yield event
+
+        try:
+            result = await _collect_async_turn_result(tee(), turn_id=handle.id)
+        finally:
+            await stream.aclose()
         return parse_agent_response(result.final_response)
 
     async def close(self) -> None:

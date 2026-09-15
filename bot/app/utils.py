@@ -16,6 +16,70 @@ from typing import Any
 MCP_CAPABILITY_TIMEOUT = 10.0
 
 
+_TOOL_LABELS = {
+    "listevents": "Reading your calendar",
+    "getevent": "Reading your calendar",
+    "search": "Searching",
+    "listtodos": "Reading your todos",
+    "gettodo": "Reading your todos",
+    "listcalendars": "Reading your calendars",
+    "listchanges": "Checking recent changes",
+    "getaccount": "Checking your settings",
+    "createevent": "Creating an event",
+    "updateevent": "Updating an event",
+    "deleteevent": "Deleting an event",
+    "createtodo": "Creating a todo",
+    "updatetodo": "Updating a todo",
+    "deletetodo": "Deleting a todo",
+    "searchbotcontext": "Looking through earlier requests",
+}
+
+
+def progress_label(event: Any) -> str | None:
+    """Turn a Codex turn notification into one line a person can read.
+
+    Deliberately duck-typed and defensive: the payload shapes come from a
+    pinned but fast-moving SDK, and a progress line is never worth failing a
+    request over, so anything unrecognised simply produces no update.
+    """
+    payload = getattr(event, "payload", None)
+    method = str(getattr(event, "method", "") or "")
+    if payload is None:
+        return None
+
+    name = _tool_name_of(payload)
+    if name:
+        # Tool names reach us namespaced by the MCP server, so match on the
+        # suffix the way the guard resolves them rather than on equality.
+        normalized = normalize_tool_name(name)
+        if normalized in _TOOL_LABELS:
+            return _TOOL_LABELS[normalized]
+        for known, label in _TOOL_LABELS.items():
+            if normalized.endswith(known):
+                return label
+        return f"Calling {name}"
+    if method.startswith("item/started"):
+        kind = str(getattr(getattr(payload, "item", None), "item_type", "") or "")
+        if "command" in kind.lower():
+            return "Running a command"
+        if "reasoning" in kind.lower():
+            return "Thinking"
+    if method.startswith("turn/started"):
+        return "Thinking"
+    return None
+
+
+def _tool_name_of(payload: Any) -> str:
+    for holder in (payload, getattr(payload, "item", None)):
+        if holder is None:
+            continue
+        for attr in ("tool_name", "tool", "name"):
+            value = getattr(holder, attr, None)
+            if isinstance(value, str) and value:
+                return value
+    return ""
+
+
 _FENCE = re.compile(r"```(\w*)\n?(.*?)```", re.S)
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
 _LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")

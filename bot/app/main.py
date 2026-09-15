@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import logging
 import shutil
 
@@ -57,6 +58,70 @@ async def main() -> None:
     telegram_session = AiohttpSession(proxy=settings.telegram_proxy) if settings.telegram_proxy else AiohttpSession()
     bot = Bot(settings.telegram_bot_token, session=telegram_session)
 
+    class LiveStatus:
+        """One message, edited in place while a request runs.
+
+        Telegram rate-limits edits, so updates are throttled and identical text
+        is never re-sent. Intermediate labels are disposable: whatever is
+        pending when the turn ends is replaced by the real answer, so a dropped
+        update can never cost the user anything.
+        """
+
+        MIN_INTERVAL = 1.5
+
+        def __init__(self, chat_id: int) -> None:
+            self.chat_id = chat_id
+            self.message_id: int | None = None
+            self.shown = ""
+            self.last_edit = 0.0
+            self.lock = asyncio.Lock()
+
+        async def update(self, text: str) -> None:
+            async with self.lock:
+                if text == self.shown:
+                    return
+                now = time.monotonic()
+                if self.message_id is None:
+                    msg = await bot.send_message(self.chat_id, f"⏳ {text}…")
+                    self.message_id, self.shown, self.last_edit = msg.message_id, text, now
+                    return
+                if now - self.last_edit < self.MIN_INTERVAL:
+                    return
+                try:
+                    await bot.edit_message_text(f"⏳ {text}…", chat_id=self.chat_id,
+                                                message_id=self.message_id)
+                except TelegramBadRequest:
+                    return  # message gone or unchanged; the final answer still lands
+                self.shown, self.last_edit = text, now
+
+        async def finish(self, text: str) -> None:
+            async with self.lock:
+                chunks = split_message(text)
+                if self.message_id is not None and len(chunks) == 1:
+                    try:
+                        await bot.edit_message_text(
+                            telegram_html(chunks[0]), chat_id=self.chat_id,
+                            message_id=self.message_id, parse_mode="HTML",
+                            link_preview_options=LinkPreviewOptions(is_disabled=True))
+                        self.message_id = None
+                        return
+                    except TelegramBadRequest:
+                        pass  # fall through to a fresh message
+                await self.discard()
+            await send(self.chat_id, text)
+
+        async def discard(self) -> None:
+            if self.message_id is None:
+                return
+            message_id, self.message_id = self.message_id, None
+            try:
+                await bot.delete_message(self.chat_id, message_id)
+            except TelegramBadRequest:
+                pass
+
+    async def status(chat_id: int) -> LiveStatus:
+        return LiveStatus(chat_id)
+
     async def send(chat_id: int, text: str) -> None:
         # The model answers in Markdown. Telegram renders a small HTML subset;
         # anything that still fails to parse is sent as plain text rather than
@@ -74,6 +139,7 @@ async def main() -> None:
     requests = RequestManager(
         store, crypto, guard, codex, settings.request_timeout_seconds,
         settings.ask_timeout_seconds, send, settings.work_dir, settings.default_timezone,
+        status,
     )
     handlers = Handlers(settings, store, crypto, calendar, codex, requests)
     poller = CalendarPoller(

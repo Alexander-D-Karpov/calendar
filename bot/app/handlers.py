@@ -99,6 +99,7 @@ class Handlers:
         r.message.register(self.user_role, Command("user_role"))
         r.message.register(self.user_del, Command("user_del"))
         r.message.register(self.catch_all)
+        r.edited_message.register(self.edited)
 
     async def _private_allowed(self, message: Message) -> bool:
         if message.chat.type != ChatType.PRIVATE:
@@ -428,6 +429,42 @@ class Handlers:
             return
         await self._submit_messages([message], bot)
 
+    async def edited(self, message: Message, bot: Bot) -> None:
+        """Re-run a request when its message is edited.
+
+        Editing is how people correct a request they got wrong. If the original
+        is still running the edit simply replaces it. If it already finished,
+        the edit is run as a correction rather than a fresh instruction, and
+        nothing the first run applied is undone: this handler never guesses at
+        reversing a mutation, so a correction can add or change but the user
+        stays responsible for removing anything the first attempt created.
+        """
+        if not await self._private_allowed(message):
+            return
+        uid = message.from_user.id
+        text = (message.text or "").strip()
+        if not text or text.startswith("/") or uid in self.pending_auth_upload:
+            return
+
+        if self.requests.waiting_for_answer(uid):
+            # Editing the answer to a clarification is just a better answer.
+            await self._submit_messages([message], bot)
+            return
+
+        if self.requests.has_active(uid):
+            await self.requests.cancel(uid)
+            await message.reply("Edited — restarting with the new text.")
+            await self._submit_messages([message], bot)
+            return
+
+        await message.reply("Edited — running the corrected request.")
+        await self._submit_messages([message], bot, text_override=(
+            "This is a correction of an earlier message you already acted on. "
+            "Treat the following as the intended request. Check the current state "
+            "before acting so you do not duplicate what was already done, and do "
+            "not undo anything unless it is explicitly asked for.\n\n" + text
+        ))
+
     async def _import_auth_document(self, message: Message, bot: Bot) -> None:
         uid = message.from_user.id
         staging = self.settings.work_dir / ".auth" / str(uid)
@@ -474,7 +511,8 @@ class Handlers:
 
         self.album_tasks[key] = asyncio.create_task(flush())
 
-    async def _submit_messages(self, messages: list[Message], bot: Bot) -> None:
+    async def _submit_messages(self, messages: list[Message], bot: Bot,
+                               text_override: str | None = None) -> None:
         first = messages[0]
         uid = first.from_user.id
         stage = self.settings.work_dir / ".staging" / str(uid) / uuid.uuid4().hex
@@ -513,7 +551,8 @@ class Handlers:
                 paths.append(path)
                 if image:
                     images.append(path)
-            await self.requests.submit(uid, Incoming(chat_id=first.chat.id, text=text, files=paths, image_paths=images))
+            await self.requests.submit(uid, Incoming(chat_id=first.chat.id, text=text_override or text,
+                                                    files=paths, image_paths=images))
             # Text-only messages do not need a staging directory; file-backed
             # requests keep theirs until RequestManager moves/cleans the files.
             if not paths:
