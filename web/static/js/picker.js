@@ -391,9 +391,13 @@
     });
 
     // A viewport-pinned popover cannot follow its field, so close it rather
-    // than let it drift away when the dialog behind it scrolls.
-    document.addEventListener("scroll", () => {
-        if (openPop && openPop.el.hasAttribute("data-fixed")) closePop();
+    // than let it drift away when the dialog behind it scrolls. The time list
+    // scrolls inside the popover, and opening one scrolls the selected option
+    // into view, so scrolls that originate within it must not close it.
+    document.addEventListener("scroll", (e) => {
+        if (!openPop || !openPop.el.hasAttribute("data-fixed")) return;
+        if (e.target instanceof Node && openPop.el.contains(e.target)) return;
+        closePop();
     }, true);
 
     function enhance(root) {
