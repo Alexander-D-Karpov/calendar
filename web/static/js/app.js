@@ -169,8 +169,16 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
         if (!dlg) {
             dlg = document.createElement("dialog");
             dlg.className = "modal";
+            // Closing on a backdrop click needs the press to have started
+            // there too. The time popover is pinned to the viewport, so its
+            // options can sit outside the dialog box; committing one hides it
+            // on mousedown and the click then resolves to the dialog itself.
+            let pressedBackdrop = false;
+            dlg.addEventListener("pointerdown", (e) => {
+                pressedBackdrop = e.target === dlg;
+            });
             dlg.addEventListener("click", (e) => {
-                if (e.target === dlg) close();
+                if (e.target === dlg && pressedBackdrop) close();
             });
             dlg.addEventListener("close", () => dlg.replaceChildren());
             dlg.addEventListener("submit", submit);
