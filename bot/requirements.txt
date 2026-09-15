@@ -1,0 +1,12 @@
+aiogram==3.31.0
+openai-codex==0.154.0
+mcp==2.2.0
+httpx2[socks]==2.12.0
+aiohttp-socks==0.12.0
+cryptography>=46,<47
+pydantic-settings>=2.10,<3
+pypdf>=6,<7
+python-docx>=1.2,<2
+openpyxl>=3.1,<4
+Pillow>=11,<13
+tzdata>=2026.1

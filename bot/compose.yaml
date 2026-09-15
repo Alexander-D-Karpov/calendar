@@ -1,0 +1,23 @@
+services:
+  calendar-bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - calendar_bot_data:/data
+    tmpfs:
+      - /run/calendar-codex-bot/caps:mode=0700,uid=10001,gid=10001
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.healthcheck"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+    mem_limit: 4g
+    cpus: "2.0"
+
+volumes:
+  calendar_bot_data:
