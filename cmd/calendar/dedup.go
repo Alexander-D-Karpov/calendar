@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,6 +24,7 @@ func dedupCommand() *command {
 		name:    "dedup",
 		summary: "Review and resolve duplicate events and todos",
 		sub: []*command{
+			{name: "scan", summary: "Re-scan a user's calendar for duplicates", args: "<email>", setup: dedupScan},
 			{name: "list", summary: "Show pending duplicates for a user", args: "<email>", setup: dedupList},
 			{name: "resolve", summary: "Resolve pending duplicates, keeping the copy Google is linked to", args: "<email>", setup: dedupResolve},
 		},
@@ -227,6 +229,39 @@ func dedupResolve(fs *flag.FlagSet) runFunc {
 			verb = "would resolve"
 		}
 		a.out.Printf("%s %d duplicate(s), skipped %d\n", verb, resolved, skipped)
+		return nil
+	}
+}
+
+// dedupScan runs the sweep in-process. Service.Scan only enqueues a job, which
+// needs a worker running and gives no way to wait for the result; resolving is
+// pointless until a scan has surfaced the pairs to resolve.
+func dedupScan(*flag.FlagSet) runFunc {
+	return func(ctx context.Context, a *app, args []string) error {
+		if len(args) != 1 {
+			return errUsage
+		}
+		owner, err := a.ownerByEmail(ctx, args[0])
+		if err != nil {
+			return err
+		}
+		svc, _, done, err := a.dedupService(ctx)
+		if err != nil {
+			return err
+		}
+		defer done()
+		payload, err := json.Marshal(dedup.ScanJob{Owner: owner})
+		if err != nil {
+			return err
+		}
+		if err := svc.HandleScan(ctx, jobs.Job{Payload: payload}); err != nil {
+			return err
+		}
+		pairs, err := svc.List(ctx, owner, domain.DupPending)
+		if err != nil {
+			return err
+		}
+		a.out.Printf("scan complete, %d pending duplicate(s)\n", len(pairs))
 		return nil
 	}
 }
