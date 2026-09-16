@@ -76,7 +76,15 @@ func (s *Service) Resolve(ctx context.Context, owner, id domain.ID, action strin
 		if err := s.remove(ctx, tx, owner, d, drop); err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
-		return tx.ResolveDuplicate(ctx, owner, id, domain.DupDeleted, now)
+		// Deleting the event drops every pair that referenced it, this one
+		// included, so there is usually no row left to mark. That is the
+		// expected end state, not a missing pair: reporting it as an error
+		// rolled the whole transaction back, restoring the event and leaving
+		// the pair pending, so this path could never resolve anything.
+		if err := tx.ResolveDuplicate(ctx, owner, id, domain.DupDeleted, now); err != nil && !errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
+		return nil
 	})
 }
 

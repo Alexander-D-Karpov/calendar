@@ -197,7 +197,7 @@ func mcpTools(d Deps, s schemaSet) []mcpTool {
 			}),
 			run: func(ctx context.Context, owner domain.ID, raw json.RawMessage) (any, error) {
 				var a struct {
-					Since int `json:"since"`
+					Since int  `json:"since"`
 					Limit *int `json:"limit"`
 				}
 				if err := decodeArgs(raw, &a); err != nil {
