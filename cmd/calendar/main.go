@@ -81,6 +81,7 @@ func rootCommand() *command {
 			userCommand(),
 			configCommand(),
 			migrateCommand(),
+			dedupCommand(),
 			keysCommand(),
 			vapidCommand(),
 			healthcheckCommand(),

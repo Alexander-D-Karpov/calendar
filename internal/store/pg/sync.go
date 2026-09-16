@@ -169,6 +169,13 @@ func (t *syncTx) UIDTaken(ctx context.Context, calendar domain.ID, uid string) (
 	return ok, mapErr(err)
 }
 
+// EventByUID lets the puller re-link an event it already holds instead of
+// inserting a second copy. UIDTaken alone cannot: it says the UID exists but
+// not which event owns it.
+func (t *syncTx) EventByUID(ctx context.Context, calendar domain.ID, uid string) (domain.Event, error) {
+	return t.events.one(ctx, eventByUIDSQL, t.owner, calendar, uid)
+}
+
 func (t *syncTx) ClaimOutbox(ctx context.Context, id int64) (domain.OutboxItem, bool, error) {
 	var it domain.OutboxItem
 	var attempts int32

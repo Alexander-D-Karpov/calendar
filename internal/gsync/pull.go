@@ -244,12 +244,22 @@ func (p *eventPull) removeLocal(ctx context.Context, id domain.ID) error {
 }
 
 func (p *eventPull) create(ctx context.Context, re google.Event) error {
+	uid := strings.TrimSpace(re.ICalUID)
+	if len(uid) > 1000 {
+		uid = ""
+	}
+	if uid != "" {
+		adopted, err := p.adopt(ctx, uid, re)
+		if err != nil || adopted {
+			return err
+		}
+	}
 	id := domain.NewID()
 	ev, ok := p.convert(ctx, re, domain.Event{ID: id, OwnerID: p.b.OwnerID, CalendarID: p.cal.ID, UID: id.String(), Version: 1})
 	if !ok {
 		return nil
 	}
-	if uid := strings.TrimSpace(re.ICalUID); uid != "" && len(uid) <= 1000 {
+	if uid != "" {
 		taken, err := p.tx.UIDTaken(ctx, p.cal.ID, uid)
 		if err != nil {
 			return err
@@ -263,6 +273,34 @@ func (p *eventPull) create(ctx context.Context, re google.Event) error {
 		return err
 	}
 	return p.save(ctx, out, re)
+}
+
+// adopt re-links an event we already hold to the remote one carrying the same
+// iCalUID. Mappings are cascaded away whenever the binding is recreated, so
+// after a reconnect every remote event arrives unmapped; without this each one
+// is inserted again and the whole calendar doubles. Only an unmapped local
+// event is adopted, so an event already paired with a different remote is left
+// alone and still goes down the insert path.
+func (p *eventPull) adopt(ctx context.Context, uid string, re google.Event) (bool, error) {
+	cur, err := p.tx.EventByUID(ctx, p.cal.ID, uid)
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		return false, nil
+	case err != nil:
+		return false, err
+	}
+	if _, mapped, err := byLocal(ctx, p.tx, domain.EntityEvent, cur.ID); err != nil || mapped {
+		return false, err
+	}
+	ev, ok := p.convert(ctx, re, cur)
+	if !ok {
+		return false, nil
+	}
+	out, err := p.tx.Events().Update(ctx, ev)
+	if err != nil {
+		return false, err
+	}
+	return true, p.save(ctx, out, re)
 }
 
 func (p *eventPull) update(ctx context.Context, m domain.SyncMapping, re google.Event, recreate func() error) error {

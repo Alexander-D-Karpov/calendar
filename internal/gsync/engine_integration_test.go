@@ -351,3 +351,96 @@ func TestGoogleSync(t *testing.T) {
 		t.Fatalf("pushed task = %+v", got)
 	}
 }
+
+// Recreating a binding cascades every sync mapping away, so the next pull sees
+// each remote event as unmapped. Before the puller adopted by iCalUID that
+// re-inserted the whole calendar, which is how one account ended up with 81
+// duplicate candidates after reconnecting Google.
+func TestPullAdoptsExistingEventsWhenMappingsAreLost(t *testing.T) {
+	ctx := context.Background()
+	st := pg.New(pgtest.New(t).Pool)
+	keys, err := crypto.NewKeyRing(map[uint32][]byte{1: bytes.Repeat([]byte{9}, crypto.KeySize)}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := st.CreateUser(ctx, domain.NewUser{
+		ID: domain.NewID(), Email: "adopt@example.com", Timezone: "Europe/Moscow",
+		Identity: &domain.Identity{ID: domain.NewID(), Provider: domain.ProviderGoogle, Subject: "g-adopt", Email: "adopt@example.com", LinkedAt: time.Now()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids, _ := st.ListIdentities(ctx, u.ID)
+	cals, _ := st.ListCalendars(ctx, u.ID)
+
+	fake := newFakeRemote()
+	fake.putEvent(google.Event{
+		ID: "appt", ICalUID: "appt@google.com", Summary: "Appointment", Editable: true,
+		Start: google.When{DateTime: "2026-09-17T09:45:00+03:00", TimeZone: "Europe/Moscow"},
+		End:   google.When{DateTime: "2026-09-17T10:30:00+03:00", TimeZone: "Europe/Moscow"},
+	})
+
+	eng := gsync.New(gsync.Options{
+		Store: st, Keys: keys, Logger: slog.New(slog.DiscardHandler),
+		Dial:    func(context.Context, string) (google.Remote, error) { return fake, nil },
+		Enqueue: func(context.Context, string, any, jobs.Options) error { return nil },
+	})
+	if err := eng.Connect(ctx, u.ID, ids[0], "refresh", google.SyncScopes); err != nil {
+		t.Fatal(err)
+	}
+	if err := eng.Apply(ctx, u.ID, []gsync.Choice{
+		{Entity: domain.BindCalendar, RemoteID: "cal", Target: cals[0].ID.String(), Direction: domain.SyncBoth},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	bs, _ := st.Bindings(ctx, u.ID)
+	var binding domain.SyncBinding
+	for _, b := range bs {
+		if b.Entity == domain.BindCalendar {
+			binding = b
+		}
+	}
+	pull := func() {
+		t.Helper()
+		payload, _ := json.Marshal(gsync.BindingJob{Binding: binding.ID})
+		if err := eng.HandlePull(ctx, jobs.Job{Payload: payload}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	count := func(sql string) int {
+		t.Helper()
+		var n int
+		if err := st.Pool().QueryRow(ctx, sql, u.ID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	const liveEvents = `SELECT count(*) FROM events WHERE owner_id = $1 AND deleted_at IS NULL`
+	const mappings = `SELECT count(*) FROM sync_mappings m JOIN sync_bindings b ON b.id = m.binding_id
+	                  WHERE b.owner_id = $1 AND m.entity = 'event'`
+
+	pull()
+	if n := count(liveEvents); n != 1 {
+		t.Fatalf("after first pull events = %d, want 1", n)
+	}
+	if n := count(mappings); n != 1 {
+		t.Fatalf("after first pull mappings = %d, want 1", n)
+	}
+
+	// Exactly what reconnecting Google does: the binding goes, its mappings
+	// cascade away, and the next pull starts from an empty sync token.
+	if _, err := st.Pool().Exec(ctx, `DELETE FROM sync_mappings WHERE binding_id = $1`, binding.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Pool().Exec(ctx, `UPDATE sync_bindings SET sync_token = NULL WHERE id = $1`, binding.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	pull()
+	if n := count(liveEvents); n != 1 {
+		t.Fatalf("after re-pull events = %d, want 1: the calendar was duplicated", n)
+	}
+	if n := count(mappings); n != 1 {
+		t.Fatalf("after re-pull mappings = %d, want 1: the event was not re-linked", n)
+	}
+}

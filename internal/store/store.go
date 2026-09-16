@@ -64,6 +64,7 @@ type SyncTx interface {
 	DeleteMapping(ctx context.Context, entity string, local domain.ID) error
 	DeleteMappingsWithPrefix(ctx context.Context, entity, prefix string) error
 	UIDTaken(ctx context.Context, calendar domain.ID, uid string) (bool, error)
+	EventByUID(ctx context.Context, calendar domain.ID, uid string) (domain.Event, error)
 	ClaimOutbox(ctx context.Context, id int64) (domain.OutboxItem, bool, error)
 	FinishOutbox(ctx context.Context, id int64) error
 	RetryOutbox(ctx context.Context, id int64, attempts int, next time.Time, lastErr string) error
