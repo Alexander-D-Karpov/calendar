@@ -23,10 +23,10 @@ func TestChooseKeepsTheCopyGoogleIsLinkedTo(t *testing.T) {
 
 	// Dropping the mapped copy would strand the Google event with nothing
 	// pointing at it, and no later sync could repair that.
-	if got, _ := choose(true, false, d); got != dedup.ActionKeepA {
+	if got, _ := choose(side{mapped: true}, side{mapped: false}, d); got != dedup.ActionKeepA {
 		t.Fatalf("A mapped: got %s, want %s", got, dedup.ActionKeepA)
 	}
-	if got, _ := choose(false, true, d); got != dedup.ActionKeepB {
+	if got, _ := choose(side{mapped: false}, side{mapped: true}, d); got != dedup.ActionKeepB {
 		t.Fatalf("B mapped: got %s, want %s", got, dedup.ActionKeepB)
 	}
 }
@@ -35,30 +35,30 @@ func TestChooseKeepsTheMappedCopyEvenWhenItIsTheNewerOne(t *testing.T) {
 	// The re-imported copy is the newer one and it owns the mapping, so the
 	// remote link has to win over age.
 	d := domain.Duplicate{AID: older, BID: newer}
-	got, why := choose(false, true, d)
+	got, why := choose(side{mapped: false}, side{mapped: true}, d)
 	if got != dedup.ActionKeepB {
 		t.Fatalf("got %s (%s), want %s", got, why, dedup.ActionKeepB)
 	}
 }
 
 func TestChooseFallsBackToTheOriginalWhenNeitherIsLinked(t *testing.T) {
-	if got, _ := choose(false, false, domain.Duplicate{AID: older, BID: newer}); got != dedup.ActionKeepA {
+	if got, _ := choose(side{mapped: false}, side{mapped: false}, domain.Duplicate{AID: older, BID: newer}); got != dedup.ActionKeepA {
 		t.Fatalf("A older: got %s, want %s", got, dedup.ActionKeepA)
 	}
-	if got, _ := choose(false, false, domain.Duplicate{AID: newer, BID: older}); got != dedup.ActionKeepB {
+	if got, _ := choose(side{mapped: false}, side{mapped: false}, domain.Duplicate{AID: newer, BID: older}); got != dedup.ActionKeepB {
 		t.Fatalf("B older: got %s, want %s", got, dedup.ActionKeepB)
 	}
 }
 
 func TestChooseFallsBackToTheOriginalWhenBothAreLinked(t *testing.T) {
-	if got, _ := choose(true, true, domain.Duplicate{AID: older, BID: newer}); got != dedup.ActionKeepA {
+	if got, _ := choose(side{mapped: true}, side{mapped: true}, domain.Duplicate{AID: older, BID: newer}); got != dedup.ActionKeepA {
 		t.Fatalf("got %s, want %s", got, dedup.ActionKeepA)
 	}
 }
 
 func TestChooseAlwaysReturnsAValidAction(t *testing.T) {
 	for _, tc := range [][2]bool{{false, false}, {true, false}, {false, true}, {true, true}} {
-		got, why := choose(tc[0], tc[1], domain.Duplicate{AID: older, BID: newer})
+		got, why := choose(side{mapped: tc[0]}, side{mapped: tc[1]}, domain.Duplicate{AID: older, BID: newer})
 		if got != dedup.ActionKeepA && got != dedup.ActionKeepB {
 			t.Fatalf("choose(%v) = %q, not a keep action", tc, got)
 		}
@@ -99,5 +99,23 @@ func TestEligibleHonoursTheScoreFloor(t *testing.T) {
 func TestEligibleRejectsUnknownReasons(t *testing.T) {
 	if eligible(domain.Duplicate{Reason: "something-new", Score: 1}, true, 0) {
 		t.Fatal("an unrecognised reason must not be auto-resolved")
+	}
+}
+
+func TestChooseKeepsTheCopyInTheSyncedCalendarWhenNeitherIsMapped(t *testing.T) {
+	// The stray copy after an import target change sits in a calendar with no
+	// Google binding, and it is usually the older of the two: age alone would
+	// keep it and delete the synced one, pushing that deletion out to Google.
+	d := domain.Duplicate{AID: older, BID: newer}
+	got, why := choose(side{}, side{bound: true}, d)
+	if got != dedup.ActionKeepB {
+		t.Fatalf("got %s (%s), want %s", got, why, dedup.ActionKeepB)
+	}
+}
+
+func TestChooseStillPrefersAMappingOverACalendarBinding(t *testing.T) {
+	d := domain.Duplicate{AID: older, BID: newer}
+	if got, _ := choose(side{mapped: true}, side{bound: true}, d); got != dedup.ActionKeepA {
+		t.Fatalf("got %s, want %s: an event-level mapping is the stronger signal", got, dedup.ActionKeepA)
 	}
 }

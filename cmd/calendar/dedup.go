@@ -63,16 +63,23 @@ func (a *app) dedupService(ctx context.Context) (*dedup.Service, *pgxpool.Pool, 
 	return svc, pool, pool.Close, nil
 }
 
-// mappedSide reports which of the pair Google still points at. Keeping that
-// copy leaves the remote link intact; dropping it would strand the Google event
-// with nothing mapping to it, which no later sync can repair.
-func mappedSide(ctx context.Context, pool *pgxpool.Pool, owner domain.ID, d domain.Duplicate) (a, b bool, err error) {
+// side describes how strongly a copy is tied to Google. An event-level mapping
+// is the strongest signal; failing that, living in a calendar that is bound to
+// Google still means Google is the side to preserve, because the copy in an
+// unsynced calendar is the stray one.
+type side struct{ mapped, bound bool }
+
+func sides(ctx context.Context, pool *pgxpool.Pool, owner domain.ID, d domain.Duplicate) (a, b side, err error) {
 	const q = `SELECT
 	    EXISTS (SELECT 1 FROM sync_mappings m JOIN sync_bindings sb ON sb.id = m.binding_id
 	            WHERE sb.owner_id = $1 AND m.entity = $2 AND m.local_id = $3),
 	    EXISTS (SELECT 1 FROM sync_mappings m JOIN sync_bindings sb ON sb.id = m.binding_id
-	            WHERE sb.owner_id = $1 AND m.entity = $2 AND m.local_id = $4)`
-	err = pool.QueryRow(ctx, q, owner, d.Entity, d.AID, d.BID).Scan(&a, &b)
+	            WHERE sb.owner_id = $1 AND m.entity = $2 AND m.local_id = $4),
+	    EXISTS (SELECT 1 FROM events e JOIN sync_bindings sb ON sb.local_calendar_id = e.calendar_id
+	            WHERE e.id = $3 AND sb.owner_id = $1),
+	    EXISTS (SELECT 1 FROM events e JOIN sync_bindings sb ON sb.local_calendar_id = e.calendar_id
+	            WHERE e.id = $4 AND sb.owner_id = $1)`
+	err = pool.QueryRow(ctx, q, owner, d.Entity, d.AID, d.BID).Scan(&a.mapped, &b.mapped, &a.bound, &b.bound)
 	return a, b, err
 }
 
@@ -90,15 +97,19 @@ func eligible(d domain.Duplicate, fuzzy bool, minScore float64) bool {
 	return false
 }
 
-// choose returns the action to keep the better copy, and why.
-func choose(aMapped, bMapped bool, d domain.Duplicate) (string, string) {
+// choose returns the action that keeps the better copy, and why.
+func choose(a, b side, d domain.Duplicate) (string, string) {
 	switch {
-	case aMapped && !bMapped:
+	case a.mapped && !b.mapped:
 		return dedup.ActionKeepA, "A is linked to Google"
-	case bMapped && !aMapped:
+	case b.mapped && !a.mapped:
 		return dedup.ActionKeepB, "B is linked to Google"
+	case a.bound && !b.bound:
+		return dedup.ActionKeepA, "A is in the calendar synced to Google"
+	case b.bound && !a.bound:
+		return dedup.ActionKeepB, "B is in the calendar synced to Google"
 	}
-	// Neither or both are linked. IDs are UUIDv7 and therefore ordered by
+	// Nothing to tell them apart. IDs are UUIDv7 and therefore ordered by
 	// creation, so the smaller one is the copy that existed first.
 	if d.AID.String() <= d.BID.String() {
 		return dedup.ActionKeepA, "both alike, A is the original"
@@ -141,7 +152,7 @@ func dedupList(fs *flag.FlagSet) runFunc {
 			if !eligible(d, *fuzzy, *minScore) {
 				continue
 			}
-			am, bm, err := mappedSide(ctx, pool, owner, d)
+			am, bm, err := sides(ctx, pool, owner, d)
 			if err != nil {
 				return err
 			}
@@ -198,7 +209,7 @@ func dedupResolve(fs *flag.FlagSet) runFunc {
 				skipped++
 				continue
 			}
-			am, bm, err := mappedSide(ctx, pool, owner, d)
+			am, bm, err := sides(ctx, pool, owner, d)
 			if err != nil {
 				return err
 			}
