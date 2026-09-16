@@ -67,3 +67,37 @@ func TestChooseAlwaysReturnsAValidAction(t *testing.T) {
 		}
 	}
 }
+
+func TestEligibleTreatsExactReasonsAsSafe(t *testing.T) {
+	for _, reason := range []string{domain.ReasonUID, domain.ReasonFingerprint} {
+		if !eligible(domain.Duplicate{Reason: reason}, false, 1) {
+			t.Fatalf("%s should be eligible without opting into fuzzy", reason)
+		}
+	}
+}
+
+func TestEligibleExcludesFuzzyUnlessAskedFor(t *testing.T) {
+	d := domain.Duplicate{Reason: domain.ReasonFuzzy, Score: 1}
+	if eligible(d, false, 1) {
+		t.Fatal("fuzzy must not be resolved unless explicitly included")
+	}
+	if !eligible(d, true, 1) {
+		t.Fatal("a perfect fuzzy match should be eligible once included")
+	}
+}
+
+func TestEligibleHonoursTheScoreFloor(t *testing.T) {
+	// A similarity below the floor is a judgement call, not a duplicate.
+	if eligible(domain.Duplicate{Reason: domain.ReasonFuzzy, Score: 0.82}, true, 1) {
+		t.Fatal("0.82 must not pass a floor of 1")
+	}
+	if !eligible(domain.Duplicate{Reason: domain.ReasonFuzzy, Score: 0.82}, true, 0.8) {
+		t.Fatal("0.82 should pass a floor of 0.8")
+	}
+}
+
+func TestEligibleRejectsUnknownReasons(t *testing.T) {
+	if eligible(domain.Duplicate{Reason: "something-new", Score: 1}, true, 0) {
+		t.Fatal("an unrecognised reason must not be auto-resolved")
+	}
+}

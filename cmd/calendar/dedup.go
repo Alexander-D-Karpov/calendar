@@ -74,6 +74,20 @@ func mappedSide(ctx context.Context, pool *pgxpool.Pool, owner domain.ID, d doma
 	return a, b, err
 }
 
+// eligible mirrors the app's own auto-resolution ladder: uid and fingerprint
+// are exact matches and safe to act on unattended. Fuzzy is a similarity score
+// and is only ever included deliberately, and then only at the score the caller
+// is willing to treat as identical.
+func eligible(d domain.Duplicate, fuzzy bool, minScore float64) bool {
+	switch d.Reason {
+	case domain.ReasonUID, domain.ReasonFingerprint:
+		return true
+	case domain.ReasonFuzzy:
+		return fuzzy && d.Score >= minScore
+	}
+	return false
+}
+
 // choose returns the action to keep the better copy, and why.
 func choose(aMapped, bMapped bool, d domain.Duplicate) (string, string) {
 	switch {
@@ -100,7 +114,8 @@ func (a *app) ownerByEmail(ctx context.Context, email string) (domain.ID, error)
 }
 
 func dedupList(fs *flag.FlagSet) runFunc {
-	all := fs.Bool("all", false, "include fuzzy matches, not only exact UID duplicates")
+	fuzzy := fs.Bool("fuzzy", false, "also include similarity matches, not only exact ones")
+	minScore := fs.Float64("min-score", 1, "smallest similarity `score` to treat as identical")
 	return func(ctx context.Context, a *app, args []string) error {
 		if len(args) != 1 {
 			return errUsage
@@ -121,7 +136,7 @@ func dedupList(fs *flag.FlagSet) runFunc {
 		out := make([]dedupReport, 0, len(pairs))
 		for _, p := range pairs {
 			d := p.Duplicate
-			if !*all && d.Reason != domain.ReasonUID {
+			if !eligible(d, *fuzzy, *minScore) {
 				continue
 			}
 			am, bm, err := mappedSide(ctx, pool, owner, d)
@@ -154,7 +169,8 @@ func dedupList(fs *flag.FlagSet) runFunc {
 }
 
 func dedupResolve(fs *flag.FlagSet) runFunc {
-	all := fs.Bool("all", false, "include fuzzy matches, not only exact UID duplicates")
+	fuzzy := fs.Bool("fuzzy", false, "also include similarity matches, not only exact ones")
+	minScore := fs.Float64("min-score", 1, "smallest similarity `score` to treat as identical")
 	dry := fs.Bool("dry-run", false, "report what would change without touching anything")
 	return func(ctx context.Context, a *app, args []string) error {
 		if len(args) != 1 {
@@ -176,7 +192,7 @@ func dedupResolve(fs *flag.FlagSet) runFunc {
 		var resolved, skipped int
 		for _, p := range pairs {
 			d := p.Duplicate
-			if !*all && d.Reason != domain.ReasonUID {
+			if !eligible(d, *fuzzy, *minScore) {
 				skipped++
 				continue
 			}
