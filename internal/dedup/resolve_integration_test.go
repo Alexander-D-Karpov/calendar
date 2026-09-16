@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/Alexander-D-Karpov/calendar/internal/clock"
 	"github.com/Alexander-D-Karpov/calendar/internal/dedup"
@@ -97,5 +98,62 @@ func TestResolveDeletesTheDuplicateAndClearsThePair(t *testing.T) {
 	}
 	if live != 1 {
 		t.Fatalf("events = %d, want 1: the duplicate was not removed", live)
+	}
+}
+
+// The nightly sweep only looks at a rolling window, so duplicates further out
+// than that stay invisible: changing the import target calendar left one
+// account with 133 duplicated events that every scan reported as clean.
+func TestFullScanFindsDuplicatesOutsideTheRollingWindow(t *testing.T) {
+	ctx := context.Background()
+	st := pg.New(pgtest.New(t).Pool)
+
+	u, err := st.CreateUser(ctx, domain.NewUser{
+		ID: domain.NewID(), Email: "window@example.com", Timezone: "UTC",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cals, err := st.ListCalendars(ctx, u.ID)
+	if err != nil || len(cals) == 0 {
+		t.Fatalf("calendars = %v %v", cals, err)
+	}
+
+	// Two identical events well beyond the window the sweep covers.
+	far := time.Now().UTC().AddDate(3, 0, 0).Format("2006-01-02")
+	events := service.NewEvents(st, st, st, clock.New(), 5000)
+	for range 2 {
+		if _, err := events.Create(ctx, u.ID, domain.EventPatch{
+			CalendarID: domain.Some(cals[0].ID.String()),
+			Title:      domain.Some("Far future"),
+			Start:      domain.Some(far + "T09:00:00Z"),
+			End:        domain.Some(far + "T10:00:00Z"),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	svc := dedup.New(dedup.Options{
+		Repo: st, Clock: clock.New(), Logger: slog.New(slog.DiscardHandler),
+		Enqueue: func(context.Context, string, any, jobs.Options) error { return nil },
+	})
+	scan := func(full bool) int {
+		t.Helper()
+		payload, _ := json.Marshal(dedup.ScanJob{Owner: u.ID, Full: full})
+		if err := svc.HandleScan(ctx, jobs.Job{Payload: payload}); err != nil {
+			t.Fatal(err)
+		}
+		pairs, err := svc.List(ctx, u.ID, domain.DupPending)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(pairs)
+	}
+
+	if n := scan(false); n != 0 {
+		t.Fatalf("windowed scan found %d pairs, expected it to miss them", n)
+	}
+	if n := scan(true); n == 0 {
+		t.Fatal("full scan found nothing: duplicates outside the window stay hidden")
 	}
 }

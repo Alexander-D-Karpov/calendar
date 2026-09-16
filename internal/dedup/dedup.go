@@ -25,10 +25,18 @@ const (
 	maxTodos       = 5000
 	maxPairs       = 500
 	reviewLimit    = 200
+	// Wide enough to cover any calendar anyone keeps, without reaching the
+	// timestamp bounds Postgres would reject.
+	fullScanSpan = 100 * 365 * 24 * time.Hour
 )
 
 type ScanJob struct {
 	Owner domain.ID `json:"owner"`
+	// Full ignores the rolling window below. The periodic sweep stays windowed
+	// so it costs the same on a large account every night, but that silently
+	// hides anything older or further out, which is where a bad import leaves
+	// most of its duplicates.
+	Full bool `json:"full,omitempty"`
 }
 
 type Repo interface {
@@ -109,7 +117,7 @@ func (s *Service) HandleScan(ctx context.Context, j jobs.Job) error {
 	if u.DedupPolicy == domain.DedupOff {
 		return nil
 	}
-	pairs, err := s.find(ctx, p.Owner)
+	pairs, err := s.find(ctx, p.Owner, p.Full)
 	if err != nil {
 		return err
 	}
@@ -146,9 +154,13 @@ func (s *Service) HandleScan(ctx context.Context, j jobs.Job) error {
 	return nil
 }
 
-func (s *Service) find(ctx context.Context, owner domain.ID) ([]domain.Duplicate, error) {
+func (s *Service) find(ctx context.Context, owner domain.ID, full bool) ([]domain.Duplicate, error) {
 	now := s.now()
-	events, err := s.repo.EventsInSpan(ctx, owner, now.Add(-scanBack), now.Add(scanAhead))
+	back, ahead := scanBack, scanAhead
+	if full {
+		back, ahead = fullScanSpan, fullScanSpan
+	}
+	events, err := s.repo.EventsInSpan(ctx, owner, now.Add(-back), now.Add(ahead))
 	if err != nil {
 		return nil, err
 	}

@@ -236,7 +236,8 @@ func dedupResolve(fs *flag.FlagSet) runFunc {
 // dedupScan runs the sweep in-process. Service.Scan only enqueues a job, which
 // needs a worker running and gives no way to wait for the result; resolving is
 // pointless until a scan has surfaced the pairs to resolve.
-func dedupScan(*flag.FlagSet) runFunc {
+func dedupScan(fs *flag.FlagSet) runFunc {
+	full := fs.Bool("full", false, "scan the whole calendar, not just the rolling window the nightly sweep uses")
 	return func(ctx context.Context, a *app, args []string) error {
 		if len(args) != 1 {
 			return errUsage
@@ -250,7 +251,7 @@ func dedupScan(*flag.FlagSet) runFunc {
 			return err
 		}
 		defer done()
-		payload, err := json.Marshal(dedup.ScanJob{Owner: owner})
+		payload, err := json.Marshal(dedup.ScanJob{Owner: owner, Full: *full})
 		if err != nil {
 			return err
 		}
