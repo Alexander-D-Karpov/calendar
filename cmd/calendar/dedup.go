@@ -208,14 +208,19 @@ func dedupResolve(fs *flag.FlagSet) runFunc {
 			}
 			// Through the service, so the delete is recorded as a change and
 			// queued for Google; a raw DELETE would do neither.
-			if err := svc.Resolve(ctx, owner, d.ID, action); err != nil {
-				if errors.Is(err, domain.ErrNotFound) {
-					skipped++
-					continue
-				}
+			switch err := svc.Resolve(ctx, owner, d.ID, action); {
+			case err == nil:
+				resolved++
+			case errors.Is(err, domain.ErrNotFound), errors.Is(err, domain.ErrConflict):
+				// Resolving a pair deletes an event and drops the other pairs
+				// that referenced it, so a later one can legitimately be gone.
+				// Say which, rather than reporting a bare count that hides a
+				// real failure among the expected ones.
+				a.out.Printf("skipped %s: %v\n", d.ID, err)
+				skipped++
+			default:
 				return fmt.Errorf("resolve %s: %w", d.ID, err)
 			}
-			resolved++
 		}
 		verb := "resolved"
 		if *dry {
