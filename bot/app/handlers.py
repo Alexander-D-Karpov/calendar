@@ -32,7 +32,7 @@ Setup:
 /codex_logout — clear Codex login
 /status — show bot setup state
 /timezone Europe/Vilnius — set timezone
-/poll on|off — external-change polling + morning agenda
+/poll on|off — daily morning agenda
 /cancel — cancel current request and queued requests
 /memory add <text> — durable explicit memory
 /memory list
@@ -45,7 +45,11 @@ Admin:
 /user_del <telegram_id>
 /codex_grant <telegram_id> — let a user run on your Codex session
 /codex_revoke <telegram_id>
-/codex_grants"""
+/codex_grants
+/model [name|default] — show or set the Codex model for all requests
+/effort [minimal|low|medium|high|default] — show or set reasoning effort"""
+
+EFFORT_LEVELS = {"minimal", "low", "medium", "high"}
 
 
 class Handlers:
@@ -104,6 +108,8 @@ class Handlers:
         r.message.register(self.codex_grant, Command("codex_grant"))
         r.message.register(self.codex_revoke, Command("codex_revoke"))
         r.message.register(self.codex_grants, Command("codex_grants"))
+        r.message.register(self.model, Command("model"))
+        r.message.register(self.effort, Command("effort"))
         r.message.register(self.catch_all)
         r.edited_message.register(self.edited)
 
@@ -500,6 +506,45 @@ class Handlers:
                 rows.append(f"{uid} ← {lender}")
         await message.answer("Shared Codex sessions:\n" + "\n".join(rows) if rows
                              else "No shared Codex sessions.")
+
+    async def model(self, message: Message, command: CommandObject) -> None:
+        if not await self._admin(message):
+            return
+        args = (command.args or "").strip()
+        if not args:
+            current = self.store.get_setting("codex_model") or self.settings.codex_model
+            await message.answer(
+                f"Codex model: {current or '(Codex subscription default)'}\n"
+                "Usage: /model <name|default>"
+            )
+            return
+        value = None if args.lower() == "default" else args
+        await self.store.set_setting("codex_model", value)
+        shown = value or (self.settings.codex_model or "the Codex subscription default")
+        await message.answer(f"Codex model set to {shown}. Applies to new requests.")
+
+    async def effort(self, message: Message, command: CommandObject) -> None:
+        if not await self._admin(message):
+            return
+        value = (command.args or "").strip().lower()
+        if not value:
+            current = self.store.get_setting("codex_reasoning_effort") or self.settings.codex_reasoning_effort
+            await message.answer(
+                f"Reasoning effort: {current}\n"
+                "Usage: /effort <minimal|low|medium|high|default>"
+            )
+            return
+        if value == "default":
+            await self.store.set_setting("codex_reasoning_effort", None)
+            await message.answer(
+                f"Reasoning effort reset to {self.settings.codex_reasoning_effort}. Applies to new requests."
+            )
+            return
+        if value not in EFFORT_LEVELS:
+            await message.answer("Usage: /effort <minimal|low|medium|high|default>")
+            return
+        await self.store.set_setting("codex_reasoning_effort", value)
+        await message.answer(f"Reasoning effort set to {value}. Applies to new requests.")
 
     async def edited(self, message: Message, bot: Bot) -> None:
         """Re-run a request when its message is edited.

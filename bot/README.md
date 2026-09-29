@@ -16,7 +16,7 @@ A self-hosted Telegram control plane for ACalendar using **Codex with a ChatGPT 
 - Calendar bearer tokens are Fernet-encrypted in the flat JSON state and are **never** given to the Codex process. Codex gets a random, short-lived localhost MCP capability. That capability is handed to the bridge through a one-shot `0600` file under `/run`, not argv or environment; the bridge reads and unlinks it before serving MCP.
 - No DB. `state.json` is loaded at startup and atomically rewritten after mutations.
 - HTTP/SOCKS proxy support for Telegram, ACalendar MCP, and Codex.
-- Polls `/changes` through MCP and pushes externally-originated changes. Sends a direct, no-LLM morning agenda once per day.
+- Sends a direct, no-LLM morning agenda once per day.
 
 ## Destructive-operation policy
 
@@ -120,7 +120,13 @@ Admin commands:
 /user_add <telegram_id> [user|admin]
 /user_role <telegram_id> <user|admin>
 /user_del <telegram_id>
+/model [name|default]                 # show or set the Codex model for all requests
+/effort [minimal|low|medium|high|default]
 ```
+
+The model and effort are bot-wide, stored in `state.json`, and apply to the next
+request each user starts. `default` clears the override and falls back to
+`CODEX_MODEL` / `CODEX_REASONING_EFFORT` from `.env` (default model `gpt-5.6-luna`).
 
 ## Proxy configuration
 
@@ -166,7 +172,7 @@ A single Codex login is **not** shared across Telegram users. Every user authent
 - The bot caches `tools/list` briefly (`TOOL_CACHE_TTL_SECONDS`) and resolves poller tool names from the actual MCP list instead of assuming operation IDs are MCP names.
 - Files are passed by local path instead of injecting contents into the prompt.
 - Old context is searched only on demand.
-- Morning agenda and change notifications bypass the LLM entirely.
+- The morning agenda bypasses the LLM entirely.
 - The result is constrained with a small JSON output schema.
 
 ## Notes / operational boundaries
@@ -181,7 +187,7 @@ A single Codex login is **not** shared across Telegram users. Every user authent
 - Measured against `openai-codex==0.154.0`, `thread_start` launches the MCP server itself but returns without waiting for the child, so the capability is unlinked roughly 0.4s *after* the call returns rather than before it. The smoke therefore polls for the unlink up to `EAGER_MCP_STARTUP_TIMEOUT` instead of asserting it instantly; because it never issues a tool call, a runtime that defers MCP startup to first use still fails the check. The residual exposure is a sub-second window in which the `0600` capability file exists in the `tmpfs` cap directory, which the Codex filesystem profile does not grant the model read access to.
 - For file formats Codex cannot interpret directly, the image includes `pypdf`, `python-docx`, `openpyxl`, Pillow, `poppler-utils`, `file`, and `unzip` so it can inspect local attachments without modifying them.
 - `MAX_FILE_BYTES` is the application-side cap. Telegram/Bot API deployment limits may impose a lower or different effective limit.
-- Morning agenda resolves `listEvents` and `listTodos` from the token's actual `tools/list`; change polling resolves `listChanges` the same way. Missing/ambiguous tools are logged and that polling feature is skipped. ACalendar currently documents all three operation IDs, with `/changes` requiring `calendars:read`.
+- Morning agenda resolves `listEvents` and `listTodos` from the token's actual `tools/list`. Missing/ambiguous tools are logged and the agenda is skipped for that user.
 - `CAPABILITY_TTL_SECONDS` must be greater than both `REQUEST_TIMEOUT_SECONDS` and `ASK_TIMEOUT_SECONDS`. The guard refreshes the capability at every turn and when entering/leaving clarification state.
 - The bot intentionally does not persist an unfinished Codex transcript. Therefore an unfinished clarification flow cannot resume after a container restart.
 

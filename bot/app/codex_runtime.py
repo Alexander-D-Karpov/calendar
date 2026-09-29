@@ -250,6 +250,9 @@ class CodexRuntime:
         cap: str,
         timezone: str,
         now_text: str,
+        *,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
     ) -> "LiveCodexSession":
         cap_file = self._write_cap_file(user_id, cap)
         self.write_config(user_id, guard_url=guard_url, cap_file=cap_file, workdir=workdir)
@@ -266,11 +269,12 @@ class CodexRuntime:
             # exclusive.
             "config": {
                 "web_search": "disabled",
-                "model_reasoning_effort": self.settings.codex_reasoning_effort,
+                "model_reasoning_effort": reasoning_effort or self.settings.codex_reasoning_effort,
             },
         }
-        if self.settings.codex_model:
-            kwargs["model"] = self.settings.codex_model
+        chosen_model = model or self.settings.codex_model
+        if chosen_model:
+            kwargs["model"] = chosen_model
         try:
             thread = await client.thread_start(**kwargs)
             # MCP startup happens as part of Codex initialization, but thread_start

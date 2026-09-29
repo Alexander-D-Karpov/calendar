@@ -120,3 +120,23 @@ def test_list_user_ids_does_not_require_copying_records(tmp_path):
     store = Store(tmp_path / "state.json", 5)
     store.data["users"] = {"10": {"large": [1] * 100}, "20": {"large": [2] * 100}}
     assert store.list_user_ids() == [10, 20]
+
+
+def test_global_settings_persist_and_reset(tmp_path):
+    async def run():
+        path = tmp_path / "state.json"
+        store = Store(path, 5)
+        await store.load()
+        assert store.get_setting("codex_model", "fallback") == "fallback"
+
+        await store.set_setting("codex_model", "gpt-5.6-luna")
+        await store.set_setting("codex_reasoning_effort", "high")
+        reloaded = Store(path, 5)
+        await reloaded.load()
+        assert reloaded.get_setting("codex_model") == "gpt-5.6-luna"
+        assert reloaded.get_setting("codex_reasoning_effort") == "high"
+
+        await reloaded.set_setting("codex_model", None)
+        assert reloaded.get_setting("codex_model", "fallback") == "fallback"
+
+    asyncio.run(run())

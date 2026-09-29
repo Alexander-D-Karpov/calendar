@@ -34,6 +34,9 @@ class FakeStore:
     def get_user(self, user_id):
         return {"calendar_token": "enc", "timezone": "Europe/Vilnius"}
 
+    def get_setting(self, key, default=None):
+        return default
+
     async def add_history(self, user_id, request, result):
         self.history.append((user_id, request, result))
 

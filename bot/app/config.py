@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     default_timezone: str = "Europe/Vilnius"
     poll_interval_seconds: int = 60
     agenda_hour: int = 8
-    codex_model: str | None = None
+    codex_model: str | None = "gpt-5.6-luna"
     codex_reasoning_effort: str = "medium"
 
     @field_validator(

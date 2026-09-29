@@ -36,7 +36,7 @@ class Store:
         self.max_history_items = max_history_items
         self.secret_box = secret_box
         self._lock = asyncio.Lock()
-        self.data: dict[str, Any] = {"version": 2, "users": {}}
+        self.data: dict[str, Any] = {"version": 2, "users": {}, "config": {}}
 
     async def load(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -51,6 +51,7 @@ class Store:
         old_version = self.data.get("version", 1)
         self.data.setdefault("version", 1)
         self.data.setdefault("users", {})
+        self.data.setdefault("config", {})
         for uid in list(self.data["users"]):
             self.data["users"][uid] = self._normalize_user(self.data["users"][uid])
 
@@ -194,6 +195,21 @@ class Store:
     async def remove_user(self, user_id: int) -> None:
         async with self._lock:
             self.data["users"].pop(str(user_id), None)
+            await self._dump_locked()
+
+    def get_setting(self, key: str, default: Any = None) -> Any:
+        """Read a bot-wide setting (e.g. the admin-selected Codex model)."""
+        value = (self.data.get("config") or {}).get(key)
+        return default if value is None else value
+
+    async def set_setting(self, key: str, value: Any) -> None:
+        """Set or clear a bot-wide setting. A None value resets to the default."""
+        async with self._lock:
+            config = self.data.setdefault("config", {})
+            if value is None:
+                config.pop(key, None)
+            else:
+                config[key] = value
             await self._dump_locked()
 
     async def add_history(self, user_id: int, request: str, result: str) -> None:

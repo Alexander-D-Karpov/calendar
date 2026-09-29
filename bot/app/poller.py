@@ -77,34 +77,10 @@ class CalendarPoller:
         return actual
 
     async def _poll_user(self, user_id: int, user: dict[str, Any]) -> None:
+        # Change polling used to push "External calendar changes" notes, but an
+        # ordinary edit synced in from Google surfaced as a spurious alert, so the
+        # feature was removed. The poller now only sends the daily agenda.
         token = self.crypto.decrypt(user["calendar_token"])
-        list_changes = await self._resolve(user_id, token, "listChanges")
-        if list_changes:
-            cursor = user.get("change_cursor")
-            if cursor is None:
-                data = await self.calendar.call(token, list_changes, {"since": 0, "limit": 1})
-                if isinstance(data, dict) and isinstance(data.get("latest"), int):
-                    latest = data["latest"]
-                    await self.store.update_user(user_id, lambda u: u.__setitem__("change_cursor", latest))
-            else:
-                data = await self.calendar.call(token, list_changes, {"since": int(cursor), "limit": 200})
-                if isinstance(data, dict):
-                    latest = data.get("latest")
-                    if isinstance(latest, int) and latest != cursor:
-                        await self.store.update_user(user_id, lambda u: u.__setitem__("change_cursor", latest))
-                    # Avoid echoing ordinary writes from this app; surface external sync origins.
-                    external = [x for x in (data.get("items") or []) if isinstance(x, dict) and x.get("origin")]
-                    if external:
-                        lines = []
-                        for item in external[:8]:
-                            lines.append(
-                                f"{item.get('entity','item')} {item.get('op','changed')}: "
-                                f"{item.get('id','?')} ({item.get('origin')})"
-                            )
-                        if len(external) > 8:
-                            lines.append(f"…and {len(external) - 8} more")
-                        await self.send(user_id, "External calendar changes:\n" + "\n".join(lines))
-
         await self._maybe_send_agenda(user_id, user, token)
 
     async def _maybe_send_agenda(self, user_id: int, user: dict[str, Any], token: str) -> None:

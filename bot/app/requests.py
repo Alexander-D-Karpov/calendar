@@ -192,6 +192,8 @@ class RequestManager:
                     cap,
                     timezone,
                     now,
+                    model=self.store.get_setting("codex_model"),
+                    reasoning_effort=self.store.get_setting("codex_reasoning_effort"),
                 )
             except BaseException:
                 # Cancellation during startup must not strand a capability/workdir.
