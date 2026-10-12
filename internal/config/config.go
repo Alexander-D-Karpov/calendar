@@ -34,13 +34,14 @@ const (
 )
 
 const (
-	PurposeGoogle = "google"
-	PurposePush   = "push"
-	PurposeSentry = "sentry"
-	PurposeFetch  = "fetch"
+	PurposeGoogle  = "google"
+	PurposePush    = "push"
+	PurposeSentry  = "sentry"
+	PurposeFetch   = "fetch"
+	PurposeWeather = "weather"
 )
 
-var OutboundPurposes = []string{PurposeGoogle, PurposePush, PurposeSentry, PurposeFetch}
+var OutboundPurposes = []string{PurposeGoogle, PurposePush, PurposeSentry, PurposeFetch, PurposeWeather}
 
 type Config struct {
 	App          App

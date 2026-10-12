@@ -18,13 +18,14 @@ import (
 type Purpose string
 
 const (
-	Google Purpose = "google"
-	Push   Purpose = "push"
-	Sentry Purpose = "sentry"
-	Fetch  Purpose = "fetch"
+	Google  Purpose = "google"
+	Push    Purpose = "push"
+	Sentry  Purpose = "sentry"
+	Fetch   Purpose = "fetch"
+	Weather Purpose = "weather"
 )
 
-var Purposes = []Purpose{Google, Push, Sentry, Fetch}
+var Purposes = []Purpose{Google, Push, Sentry, Fetch, Weather}
 
 var defaultPorts = map[string]string{
 	"http":    "80",

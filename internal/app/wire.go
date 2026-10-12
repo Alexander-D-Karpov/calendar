@@ -13,8 +13,10 @@ import (
 	"github.com/Alexander-D-Karpov/calendar/internal/db"
 	"github.com/Alexander-D-Karpov/calendar/internal/gsync"
 	"github.com/Alexander-D-Karpov/calendar/internal/httpx"
+	"github.com/Alexander-D-Karpov/calendar/internal/netx"
 	"github.com/Alexander-D-Karpov/calendar/internal/observe"
 	"github.com/Alexander-D-Karpov/calendar/internal/ratelimit"
+	"github.com/Alexander-D-Karpov/calendar/internal/weather"
 	"github.com/Alexander-D-Karpov/calendar/internal/web"
 	"github.com/Alexander-D-Karpov/calendar/internal/web/account"
 	"github.com/Alexander-D-Karpov/calendar/internal/web/apidocs"
@@ -119,6 +121,8 @@ func (a *App) Handler() (http.Handler, error) {
 		Shares:      a.Shares,
 		Changes:     a.Store,
 		Sync:        a.Sync,
+		Weather:     weather.New(a.Net.Client(netx.Weather, 5*time.Second), "", a.Clock),
+		Clock:       a.Clock,
 		BaseURL:     cfg.App.Origin(),
 		Idempotency: a.Store,
 		Guard:       guard.WithFail(apiFail),

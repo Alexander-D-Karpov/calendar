@@ -22,6 +22,7 @@ const (
 	ScopeImportsWrite   Scope = "imports:write"
 	ScopeExportsRead    Scope = "exports:read"
 	ScopeSyncWrite      Scope = "sync:write"
+	ScopeDisplayRead    Scope = "display:read"
 )
 
 var AllScopes = []Scope{
@@ -36,6 +37,7 @@ var AllScopes = []Scope{
 	ScopeImportsWrite,
 	ScopeExportsRead,
 	ScopeSyncWrite,
+	ScopeDisplayRead,
 }
 
 func ParseScopes(in []string) ([]Scope, error) {

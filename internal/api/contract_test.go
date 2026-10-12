@@ -422,6 +422,17 @@ func TestHandlerTypesMatchSchemas(t *testing.T) {
 				Enabled: true, Watching: true, LastSyncedAt: &at,
 			}},
 		},
+		"Display": func() displayJSON {
+			d := displayJSON{
+				Now: at.Unix(), TZOffset: 3 * 3600,
+				Sleep:   []displaySleepJSON{{Weekday: 1, Start: 23*60 + 30, End: 7*60 + 30}},
+				Weather: &displayWeatherJSON{Temp: 4.2, Code: 3, Day: true, At: at.Unix()},
+				Events:  []displayEventJSON{displayEvent(domain.Occurrence{Event: allDay}, map[domain.ID]string{cal.ID: cal.Color}, time.UTC)},
+				Todos:   []displayTodoJSON{displayTodo(todo)},
+			}
+			d.ETag = d.tag()
+			return d
+		}(),
 		"SearchResult": searchResponse{
 			Query: "standup", Type: "",
 			Items: []hitJSON{{

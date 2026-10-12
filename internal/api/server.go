@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Alexander-D-Karpov/calendar/internal/auth"
+	"github.com/Alexander-D-Karpov/calendar/internal/clock"
 	"github.com/Alexander-D-Karpov/calendar/internal/dedup"
 	"github.com/Alexander-D-Karpov/calendar/internal/domain"
 	"github.com/Alexander-D-Karpov/calendar/internal/exporter"
@@ -15,6 +16,7 @@ import (
 	"github.com/Alexander-D-Karpov/calendar/internal/search"
 	"github.com/Alexander-D-Karpov/calendar/internal/service"
 	"github.com/Alexander-D-Karpov/calendar/internal/subscription"
+	"github.com/Alexander-D-Karpov/calendar/internal/weather"
 )
 
 const Prefix = "/api/v1"
@@ -34,6 +36,8 @@ type Deps struct {
 	Shares      *service.Shares
 	Changes     ChangeStore
 	Sync        *gsync.Engine
+	Weather     *weather.Service
+	Clock       clock.Clock
 	BaseURL     string
 	Idempotency IdempotencyStore
 	Guard       *auth.Guard
@@ -107,6 +111,7 @@ var routes = []route{
 	{http.MethodGet, "/changes", auth.ScopeCalendarsRead, listChanges},
 	{http.MethodGet, "/sync/status", auth.ScopeSyncWrite, getSyncStatus},
 	{http.MethodPost, "/sync/run", auth.ScopeSyncWrite, runSync},
+	{http.MethodGet, "/display", auth.ScopeDisplayRead, getDisplay},
 }
 
 // Creating collections is what a retry after a dropped connection duplicates;

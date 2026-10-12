@@ -10,7 +10,7 @@ func TestOutboundAndSentryDefaults(t *testing.T) {
 	c := mustParse(t, validEnv())
 	eq(t, "Outbound.Enabled", c.Outbound.Enabled(), false)
 	eq(t, "Outbound.Proxied(google)", c.Outbound.Proxied(PurposeGoogle), false)
-	eq(t, "Outbound.ProxyFor", strings.Join(c.Outbound.ProxyFor, ","), "google,push,sentry")
+	eq(t, "Outbound.ProxyFor", strings.Join(c.Outbound.ProxyFor, ","), "google,push,sentry,weather")
 	eq(t, "len(Outbound.NoProxy)", len(c.Outbound.NoProxy), 0)
 	eq(t, "Sentry.Enabled", c.Sentry.Enabled(), false)
 	eq(t, "Sentry.Environment", c.Sentry.Environment, EnvProduction)
@@ -38,7 +38,7 @@ func TestOutboundProxyAll(t *testing.T) {
 	env["OUTBOUND_PROXY"] = "http://127.0.0.1:3128"
 	env["OUTBOUND_PROXY_FOR"] = "all"
 	c := mustParse(t, env)
-	eq(t, "ProxyFor", strings.Join(c.Outbound.ProxyFor, ","), "google,push,sentry,fetch")
+	eq(t, "ProxyFor", strings.Join(c.Outbound.ProxyFor, ","), "google,push,sentry,fetch,weather")
 	eq(t, "fetch warning", hasWarning(c, "DNS pre-flight"), true)
 
 	env["URL_FETCH_ALLOW_PRIVATE"] = "true"

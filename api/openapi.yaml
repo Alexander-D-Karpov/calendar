@@ -35,6 +35,7 @@ info:
     | `imports:write` | Uploading and committing imports |
     | `exports:read` | Downloading ICS, CSV and YAML exports |
     | `sync:write` | Reading Google sync status and starting a sync |
+    | `display:read` | Reading the compact digest for small displays |
 
     A token can already be created with the scopes marked above and will keep working
     once the matching endpoints land, but nothing accepts them today.
@@ -94,6 +95,8 @@ tags:
     description: An ordered log of what changed, for catching up without refetching.
   - name: Sync
     description: The Google Calendar and Tasks connection.
+  - name: Display
+    description: A small, flat digest of the next days for wall clocks and e-ink screens.
 paths:
   /me:
     get:
@@ -2428,6 +2431,69 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+  /display:
+    get:
+      tags: [Display]
+      operationId: getDisplay
+      summary: Get the digest for a small display
+      description: |
+        Returns everything a small device needs to draw the next days in one small reply: occurrences of visible calendars without cancelled ones, open top-level todos due in the window or overdue by up to 14 days, the sleep schedule and, when `lat` and `lon` are given, the current weather from Open-Meteo, cached for 15 minutes.
+
+        Times are unix seconds. Titles are cut to 64 characters and places to 40, with at most 50 events and 30 todos. Poll with `If-None-Match` set to the `ETag` header: the tag ignores `now`, so an unchanged screen answers `304` with no body.
+
+        Requires scope `display:read`.
+      x-scope: display:read
+      security: *readAuth
+      parameters:
+        - $ref: "#/components/parameters/DisplayDays"
+        - $ref: "#/components/parameters/DisplayLat"
+        - $ref: "#/components/parameters/DisplayLon"
+        - $ref: "#/components/parameters/IfNoneMatch"
+      responses:
+        "200":
+          description: The digest.
+          headers: *resourceHeaders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Display"
+              example:
+                etag: "kq3Zt0b1xQmA"
+                now: 1792340000
+                tz_offset: 10800
+                sleep:
+                  - wd: 1
+                    s: 1410
+                    e: 450
+                weather:
+                  t: 4.2
+                  code: 3
+                  day: true
+                  at: 1792339100
+                events:
+                  - s: 1792310400
+                    e: 1792315800
+                    c: "#9a0000"
+                    all_day: false
+                    title: Standup
+                    place: Zoom
+                todos:
+                  - due: "2026-10-09"
+                    time: null
+                    prio: 2
+                    done: 1
+                    total: 3
+                    title: Pay for the internet
+        "304":
+          $ref: "#/components/responses/NotModified"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 components:
   securitySchemes:
     bearerAuth:
@@ -2809,6 +2875,37 @@ components:
         maximum: 1000
         default: 200
       example: 200
+    DisplayDays:
+      name: days
+      in: query
+      required: false
+      description: Days to cover starting today in the account timezone, 1 to 7.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 7
+        default: 2
+      example: 2
+    DisplayLat:
+      name: lat
+      in: query
+      required: false
+      description: Latitude for the weather, sent together with `lon`. Without both the reply has no weather.
+      schema:
+        type: number
+        minimum: -90
+        maximum: 90
+      example: 55.75
+    DisplayLon:
+      name: lon
+      in: query
+      required: false
+      description: Longitude for the weather, sent together with `lat`.
+      schema:
+        type: number
+        minimum: -180
+        maximum: 180
+      example: 37.62
   headers:
     ETag:
       description: Version of the resource. Send it in `If-Match` to avoid overwriting other changes.
@@ -3200,6 +3297,136 @@ components:
           type: integer
           format: int64
           description: Newest sequence number in the account. Send it back as `since` to continue.
+    Display:
+      type: object
+      description: A compact digest of the next days for a small display.
+      additionalProperties: false
+      required: [etag, now, tz_offset, sleep, weather, events, todos]
+      properties:
+        etag:
+          type: string
+          description: The `ETag` header without quotes.
+        now:
+          type: integer
+          format: int64
+          description: Server time in unix seconds, usable as a fallback clock.
+        tz_offset:
+          type: integer
+          description: Offset of the account timezone from UTC at `now`, in seconds.
+        sleep:
+          type: array
+          description: Sleep windows, empty when the sleep schedule is off.
+          items:
+            $ref: "#/components/schemas/DisplaySleep"
+        weather:
+          $ref: "#/components/schemas/DisplayWeather"
+        events:
+          type: array
+          description: Occurrences in the window, by start.
+          items:
+            $ref: "#/components/schemas/DisplayEvent"
+        todos:
+          type: array
+          description: Open top-level todos due in the window or overdue, by due date and time.
+          items:
+            $ref: "#/components/schemas/DisplayTodo"
+    DisplaySleep:
+      type: object
+      description: Sleep hours starting on one weekday.
+      additionalProperties: false
+      required: [wd, s, e]
+      properties:
+        wd:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: Weekday the window starts on, 0 for Sunday.
+        s:
+          type: integer
+          minimum: 0
+          maximum: 1439
+          description: Local minute of the day sleep starts.
+        e:
+          type: integer
+          minimum: 0
+          maximum: 1439
+          description: Local minute of the day sleep ends. Less than `s` means the next day.
+    DisplayWeather:
+      type: object
+      nullable: true
+      description: Current weather at `lat` and `lon`, or null when they were not sent or Open-Meteo could not be reached.
+      additionalProperties: false
+      required: [t, code, day, at]
+      properties:
+        t:
+          type: number
+          description: Temperature at 2 m in °C.
+        code:
+          type: integer
+          description: WMO weather code.
+        day:
+          type: boolean
+          description: Whether the sun is up.
+        at:
+          type: integer
+          format: int64
+          description: Time of the reading in unix seconds.
+    DisplayEvent:
+      type: object
+      description: One occurrence.
+      additionalProperties: false
+      required: [s, e, c, all_day, title, place]
+      properties:
+        s:
+          type: integer
+          format: int64
+          description: Start in unix seconds. All-day events start at local midnight.
+        e:
+          type: integer
+          format: int64
+          description: End in unix seconds, exclusive.
+        c:
+          type: string
+          description: Color of the event, or of its calendar, as `#rrggbb`.
+        all_day:
+          type: boolean
+          description: Whether the event lasts whole days.
+        title:
+          type: string
+          description: Title, at most 64 characters.
+        place:
+          type: string
+          description: Location, at most 40 characters, empty when unset.
+    DisplayTodo:
+      type: object
+      description: One todo.
+      additionalProperties: false
+      required: [due, time, prio, done, total, title]
+      properties:
+        due:
+          type: string
+          format: date
+          description: Due date.
+        time:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 1439
+          description: Local minute of the day it is due, or null for the whole day.
+        prio:
+          type: integer
+          minimum: 0
+          maximum: 3
+          description: 0 none, 1 low, 2 medium, 3 high.
+        done:
+          type: integer
+          description: Checked checklist items.
+        total:
+          type: integer
+          description: All checklist items.
+        title:
+          type: string
+          description: Title, at most 64 characters.
     SyncStatus:
       type: object
       description: Whether Google is connected and what each binding is doing.

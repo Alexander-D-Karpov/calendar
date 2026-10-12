@@ -121,7 +121,7 @@ func (c *Config) read(r *reader) {
 	c.Fetch.AllowPrivate = r.boolean("URL_FETCH_ALLOW_PRIVATE", "false")
 
 	c.Outbound.Proxy = r.proxyURL("OUTBOUND_PROXY")
-	c.Outbound.ProxyFor = r.purposes("OUTBOUND_PROXY_FOR", "google,push,sentry")
+	c.Outbound.ProxyFor = r.purposes("OUTBOUND_PROXY_FOR", "google,push,sentry,weather")
 	c.Outbound.NoProxy = r.list("OUTBOUND_NO_PROXY")
 
 	c.Subscription.DefaultInterval = r.duration("SUBSCRIPTION_DEFAULT_INTERVAL", "1h", time.Minute)
